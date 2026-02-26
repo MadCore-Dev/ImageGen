@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Project Epoch: Character Gen</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100px;
+      background: #2d2d2d;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-gen {
+      background: #007aff;
+      color: white;
+    }
+
+    .btn-gen:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    #result-container {
+      margin-top: 20px;
+      border: 2px dashed #444;
+      border-radius: 12px;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    img {
+      max-width: 100%;
+      border-radius: 8px;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 24px;
+      background: #333;
+      border-radius: 12px;
+      margin: 20px 0;
+      overflow: hidden;
+      display: none;
+      border: 1px solid #444;
+      position: relative;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #007aff, #00c6ff);
+      transition: width 0.3s ease;
+      box-shadow: 0 0 10px rgba(0, 122, 255, 0.5);
+    }
+
+    .progress-text {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      line-height: 24px;
+      font-size: 12px;
+      color: #fff;
+      font-weight: bold;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Project Epoch: Character Asset Gen</h1>
+    <textarea id="promptInput" placeholder="Describe your character... (e.g. A cybernetic dwarf explorer)"></textarea>
+
+    <div class="controls">
+      <button class="btn-gen" id="generateBtn" onclick="generateCharacter()">Generate Character Asset</button>
+    </div>
+
+    <div id="status">System Idle</div>
+
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar" id="progressBar"></div>
+      <div class="progress-text" id="progressText">0%</div>
+    </div>
+
+    <div id="result-container">
+      <div id="loading" style="display:none;">
+        <div class="loader"></div>
+      </div>
+      <img id="resultImage" style="display:none;" src="">
+    </div>
+  </div>
+
+  <script>
+    const TRAFFIC_COP = "http://127.0.0.1:5050";
+    const COMFY_API = "127.0.0.1:8188"; // Host only for WS
+    const CLIENT_ID = Math.random().toString(36).substring(2, 10);
+    let socket = null;
+
+    function initWebSocket() {
+      if (socket) return;
+      socket = new WebSocket(`ws://${COMFY_API}/ws?clientId=${CLIENT_ID}`);
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'progress') {
+          const { value, max } = data.data;
+          const pc = Math.round((value / max) * 100);
+          updateProgress(pc);
+        } else if (data.type === 'executing') {
+          if (data.data.node) {
+            updateStatus(`🎨 Running Node: ${data.data.node}...`);
+          }
+        }
+      };
+
+      socket.onclose = () => {
+        console.log("WebSocket closed. Reconnecting...");
+        socket = null;
+        setTimeout(initWebSocket, 2000);
+      };
+    }
+
+    function updateProgress(pc) {
+      const container = document.getElementById('progressContainer');
+      const bar = document.getElementById('progressBar');
+      const text = document.getElementById('progressText');
+      container.style.display = 'block';
+      bar.style.width = `${pc}%`;
+      text.innerText = `${pc}%`;
+    }
+
+    async function updateStatus(msg) {
+      document.getElementById('status').innerText = msg;
+    }
+
+    async function generateCharacter() {
+      const promptText = document.getElementById('promptInput').value;
+      const btn = document.getElementById('generateBtn');
+      const loader = document.getElementById('loading');
+      const img = document.getElementById('resultImage');
+
+      if (!promptText) return alert("Please enter a prompt.");
+
+      // Reset UI
+      btn.disabled = true;
+      const originalBtnText = btn.innerText;
+      btn.innerText = "⏳ Generating Asset...";
+      
+      loader.style.display = 'block';
+      img.style.display = 'none';
+      document.getElementById('progressContainer').style.display = 'none';
+      updateProgress(0);
+      updateStatus("🚦 Contacting Traffic Cop: Preparing Hardware...");
+
+      initWebSocket();
+
+      try {
+        // 1. Handshake with Traffic Cop to ensure ComfyUI is up and Ollama is out
+        const copResponse = await fetch(`${TRAFFIC_COP}/comfyui/start`, { method: 'POST' });
+        const copData = await copResponse.json();
+
+        if (copData.status !== "success") throw new Error("Traffic Cop failed to start ComfyUI");
+        updateStatus("🎨 ComfyUI Ready: Constructing FLUX Workflow...");
+
+        // 2. Prepare the FLUX GGUF JSON (Using the exact blueprint we tested)
+        const workflow = getFluxWorkflow(promptText);
+
+        // 3. Queue the Prompt
+        const queueRes = await fetch(`http://${COMFY_API}/prompt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: workflow, client_id: CLIENT_ID })
+        });
+        const { prompt_id } = await queueRes.json();
+        updateStatus(`⏳ Generation in progress (ID: ${prompt_id.slice(0, 8)})...`);
+
+        // 4. Poll for results
+        const filename = await pollHistory(prompt_id);
+        updateStatus("✅ Asset Generated! Fetching image...");
+
+        // 5. Display Image
+        img.src = `http://${COMFY_API}/view?filename=${filename}&type=output`;
+        img.style.display = 'block';
+        loader.style.display = 'none';
+        document.getElementById('progressContainer').style.display = 'none';
+        updateStatus("Ready for next asset.");
+
+      } catch (err) {
+        console.error(err);
+        updateStatus("❌ Error: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Generate Character Asset";
+      }
+    }
+
+    // --- Helper: FLUX Workflow Construction ---
+    function getFluxWorkflow(userPrompt) {
+      return {
+        "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": "flux1-schnell-Q4_K_S.gguf" } },
+        "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": "t5xxl_fp8_e4m3fn.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux" } },
+        "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_vae.safetensors" } },
+        "4": { "class_type": "CLIPTextEncode", "inputs": { "text": userPrompt, "clip": ["2", 0] } },
+        "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
+        "5": { "class_type": "EmptyLatentImage", "inputs": { "width": 512, "height": 512, "batch_size": 1 } },
+        "6": { "class_type": "KSampler", "inputs": { "seed": Math.floor(Math.random() * 1000000), "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
+        "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
+        "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "web_gen", "images": ["7", 0] } }
+      };
+    }
+
+    async function pollHistory(prompt_id) {
+      while (true) {
+        const res = await fetch(`http://${COMFY_API}/history/${prompt_id}`);
+        const history = await res.json();
+        if (history[prompt_id]) {
+          return history[prompt_id].outputs["8"].images[0].filename;
+        }
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+  </script>
+</body>
+
+</html>
