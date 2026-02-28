@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Project Epoch: Character Gen</title>
+  <title>Project Epoch: Offline Image Gen</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica;
@@ -123,11 +123,11 @@
 
 <body>
   <div class="container">
-    <h1>Project Epoch: Character Asset Gen</h1>
-    <textarea id="promptInput" placeholder="Describe your character... (e.g. A cybernetic dwarf explorer)"></textarea>
+    <h1>Project Epoch: Offline Image Generation Tool</h1>
+    <textarea id="promptInput" placeholder="Describe your image... (e.g. A cybernetic dwarf explorer investigating a neon city alleyway)"></textarea>
 
     <div class="controls">
-      <button class="btn-gen" id="generateBtn" onclick="generateCharacter()">Generate Character Asset</button>
+      <button class="btn-gen" id="generateBtn" onclick="generateImage()">Generate Image</button>
     </div>
 
     <div id="status">System Idle</div>
@@ -188,7 +188,7 @@
       document.getElementById('status').innerText = msg;
     }
 
-    async function generateCharacter() {
+    async function generateImage() {
       const promptText = document.getElementById('promptInput').value;
       const btn = document.getElementById('generateBtn');
       const loader = document.getElementById('loading');
@@ -245,7 +245,7 @@
         updateStatus("❌ Error: " + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerText = "Generate Character Asset";
+        btn.innerText = "Generate Image";
       }
     }
 

@@ -7,7 +7,7 @@ PORT_FILE="/tmp/.gen_tool_port"
 if [ -f "$PORT_FILE" ]; then
     OLD_PORT=$(cat "$PORT_FILE")
     if lsof -i :$OLD_PORT -t >/dev/null; then
-        echo "✅ Character Generator already running on port $OLD_PORT"
+        echo "✅ Image Generator already running on port $OLD_PORT"
         exit 0
     fi
 fi
