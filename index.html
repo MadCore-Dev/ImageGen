@@ -1381,8 +1381,10 @@
     }
 
     // ============================================================
-    //  WEBSOCKET (bug fix: max retries + exponential backoff)
+    //  WEBSOCKET (bug fix: max retries + exponential backoff + activity tracking)
     // ============================================================
+    let lastComfyActivity = Date.now();
+
     function initWebSocket() {
       if (socket && socket.readyState === WebSocket.OPEN) return;
       if (wsRetries >= WS_MAX_RETRIES) {
@@ -1396,6 +1398,9 @@
 
       socket.onmessage = (event) => {
         try {
+          // Track activity to prevent premature timeouts on slow heavy models
+          lastComfyActivity = Date.now();
+
           const data = JSON.parse(event.data);
           if (data.type === 'progress') {
             const { value, max } = data.data;
@@ -1525,21 +1530,29 @@
     }
 
     // ============================================================
-    //  POLL HISTORY (bug fix: max timeout 15 minutes for heavy models)
+    //  POLL HISTORY (Dynamic Timeout based on WebSocket activity)
     // ============================================================
     async function pollHistory(prompt_id) {
-      const deadline = Date.now() + 15 * 60 * 1000;
-      while (Date.now() < deadline) {
+      // Initialize activity tracker for this poll session
+      lastComfyActivity = Date.now();
+
+      while (true) {
+        // Dynamic Timeout: If the backend has been completely silent for > 3 minutes, assume dead
+        if (Date.now() - lastComfyActivity > 3 * 60 * 1000) {
+          throw new Error('ComfyUI generation timed out (No progress/heartbeat for 3 minutes).');
+        }
+
         const res = await fetch(`http://${COMFY_API}/history/${prompt_id}`);
         const history = await res.json();
         if (history[prompt_id]) {
           const outputs = history[prompt_id].outputs;
-          const nodeKey = Object.keys(outputs).find(k => outputs[k].images);
-          if (nodeKey) return outputs[nodeKey].images[0].filename;
+          if (outputs) {
+            const nodeKey = Object.keys(outputs).find(k => outputs[k].images);
+            if (nodeKey) return outputs[nodeKey].images[0].filename;
+          }
         }
         await new Promise(r => setTimeout(r, 2000));
       }
-      throw new Error("Generation timed out after 3 minutes. Is ComfyUI still running?");
     }
 
     // ============================================================
