@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Epoch: Offline Image Gen</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     /* ============================================================
        DESIGN TOKENS
@@ -1164,14 +1165,35 @@
               complete</p>
           </div>
 
-          <div class="action-row" style="margin-top:16px; margin-bottom:0;">
+          <div class="action-row" style="margin-top:16px; margin-bottom:0; display:flex; gap:8px;">
             <button class="btn-download" id="downloadSheetBtn" onclick="downloadSpriteSheet()"
               style="flex:1; display:none;">⬇ Download Full Sheet (PNG)</button>
+            <button class="btn-download" id="downloadZipBtn" onclick="downloadFramesZip()"
+              style="flex:1; display:none; background:var(--accent-2);">⬇ Download Individual Frames (ZIP)</button>
           </div>
         </div>
       </div>
 
     </div><!-- /tab-spritegen -->
+
+    <!-- Per-cell Preview Modal -->
+    <div id="cellPreviewModal"
+      style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
+      <div class="card" style="width: 400px; text-align:center; position:relative;">
+        <button onclick="closeCellPreview()"
+          style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:white; font-size:20px; cursor:pointer;">×</button>
+        <div class="card-label" id="previewModalLabel">Frame Preview</div>
+        <div
+          style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; display:inline-block; margin-bottom:16px;">
+          <canvas id="cellPreviewCanvas" style="image-rendering:pixelated; width:200px; height:200px;"></canvas>
+        </div>
+        <div style="font-size:12px; color:var(--text-dim); margin-bottom:16px;">
+          Retrying will completely replace this single frame on the grid.
+        </div>
+        <button class="btn-generate" id="btnRetryCell" onclick="retryActiveCell()"
+          style="width:100%; background:var(--warning); color:#000;">⚠️ Retry This Frame</button>
+      </div>
+    </div>
 
   </div><!-- /app-wrapper -->
 
@@ -1194,6 +1216,11 @@
     let socket = null;
     let wsRetries = 0;
     const WS_MAX_RETRIES = 5;
+
+    let baseRefBlob = null; // The file blob we generate in stage 1
+    let genSize = 512;      // Computed model width/height for generation
+    let currentAnimationGrid = []; // Grid mapping for canvas clicks
+    let activeCell = { animId: null, frameIndex: null, row: null, col: null }; // For Retry Frame
 
     let lastSeed = null;
     let lastFilename = null;
@@ -1403,7 +1430,7 @@
 
           const data = JSON.parse(event.data);
 
-          const isSpriteTabActive = document.getElementById('tabSpriteGen').classList.contains('active');
+          const isSpriteTabActive = document.getElementById('tab-spritegen').classList.contains('active');
           const isAnimatingQueue = document.getElementById('btnStartAnim')?.disabled;
 
           if (data.type === 'progress') {
@@ -1833,7 +1860,7 @@
 
       // AI Gen Size: Always generate at a supported minimum size, then downscale onto canvas later
       const minW = MODEL_SPECS[selectedModel.type]?.minW || 512;
-      const genSize = Math.max(activeSpriteSize, minW);
+      genSize = Math.max(activeSpriteSize, minW); // Update global genSize
 
       // Auto-append pixel art keywords if empty, or use the active style from Tab 1
       let posKw = activeStyleKw.positive || 'pixel art, 16-bit, retro game sprite, isolated on solid white background, full body';
@@ -1909,6 +1936,10 @@
         document.getElementById('spriteRefImg').src = imgUrl;
         document.getElementById('spriteRefImg').style.display = 'block';
 
+        // Store the blob for later upload if needed
+        const imgRes = await fetch(imgUrl);
+        baseRefBlob = await imgRes.blob();
+
         // Setup approval button (Phase 2 entry point)
         document.getElementById('btnApproveRef').disabled = false;
         document.getElementById('btnApproveRef').style.opacity = '1';
@@ -1955,15 +1986,16 @@
       });
     }
 
-    function toggleAnimationSelection(animId, btn) {
-      const idx = selectedAnimations.indexOf(animId);
-      if (idx > -1) {
-        selectedAnimations.splice(idx, 1);
-        btn.classList.remove('active');
-      } else {
-        selectedAnimations.push(animId);
-        btn.classList.add('active');
+    function getCheckedAnimIds() {
+      const activeBtns = document.querySelectorAll('#animationPicker .preset-btn.active');
+      return Array.from(activeBtns).map(btn => ANIMATION_PRESETS.find(p => p.name === btn.innerText).id);
+    }
 
+    function toggleAnimationSelection(animId, btn) {
+      btn.classList.toggle('active');
+      selectedAnimations = getCheckedAnimIds(); // Update based on active buttons
+
+      if (selectedAnimations.includes(animId)) {
         // Auto-update slider to match the chosen preset's default (if only one selected or last selected)
         const preset = ANIMATION_PRESETS.find(a => a.id === animId);
         document.getElementById('frameCountSlider').value = preset.defaultFrames;
@@ -1996,7 +2028,9 @@
     let baseRefUploadName = null;
 
     async function startAnimationQueue() {
-      if (selectedAnimations.length === 0) {
+      const selectedAnims = getCheckedAnimIds();
+      currentAnimationGrid = selectedAnims; // Save for per-cell clicks
+      if (selectedAnims.length === 0) {
         alert("Please select at least one animation format.");
         return;
       }
@@ -2166,10 +2200,11 @@
       btn.disabled = false;
       btn.textContent = '✦ Start Sequential Generation';
       document.getElementById('downloadSheetBtn').style.display = 'block';
+      document.getElementById('downloadZipBtn').style.display = 'block';
     }
 
     // ============================================================
-    //  STAGE 4: SHEET EXPORT
+    //  STAGE 4: SHEET EXPORT & SINGLE FRAME LOGIC
     // ============================================================
     function downloadSpriteSheet() {
       const canvas = document.getElementById('spriteCanvas');
@@ -2178,6 +2213,126 @@
       a.href = dataUrl;
       a.download = `spritesheet_${Date.now()}.png`;
       a.click();
+    }
+
+    async function downloadFramesZip() {
+      const canvas = document.getElementById('spriteCanvas');
+      if (!currentAnimationGrid || currentAnimationGrid.length === 0) return;
+      const framesCount = parseInt(document.getElementById('animFrames').value, 10) || 8;
+
+      const zip = new JSZip();
+
+      for (let r = 0; r < currentAnimationGrid.length; r++) {
+        const animId = currentAnimationGrid[r];
+        for (let c = 0; c < framesCount; c++) {
+          // Extract cell
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = activeSpriteSize;
+          tempCanvas.height = activeSpriteSize;
+          const tCtx = tempCanvas.getContext('2d');
+          tCtx.drawImage(canvas, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize, 0, 0, activeSpriteSize, activeSpriteSize);
+
+          const dataUrl = tempCanvas.toDataURL('image/png');
+          const base64Data = dataUrl.split(',')[1];
+          zip.file(`${animId}_frame_${c + 1}.png`, base64Data, { base64: true });
+        }
+      }
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(content);
+      a.download = `sprites_${Date.now()}.zip`;
+      a.click();
+    }
+
+    // Canvas click detection
+    document.getElementById('spriteCanvas').addEventListener('click', (e) => {
+      if (!currentAnimationGrid || currentAnimationGrid.length === 0) return;
+
+      const rect = e.target.getBoundingClientRect();
+      const scaleX = e.target.width / rect.width;
+      const scaleY = e.target.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
+      const col = Math.floor(x / activeSpriteSize);
+      const row = Math.floor(y / activeSpriteSize);
+
+      if (row >= currentAnimationGrid.length) return;
+
+      const framesCount = parseInt(document.getElementById('animFrames').value, 10) || 8;
+      if (col >= framesCount) return;
+
+      const animId = currentAnimationGrid[row];
+      activeCell = { animId, frameIndex: col, row, col };
+
+      const previewCanvas = document.getElementById('cellPreviewCanvas');
+      previewCanvas.width = activeSpriteSize;
+      previewCanvas.height = activeSpriteSize;
+      const ctx = previewCanvas.getContext('2d');
+      ctx.clearRect(0, 0, activeSpriteSize, activeSpriteSize);
+      ctx.drawImage(document.getElementById('spriteCanvas'),
+        col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize,
+        0, 0, activeSpriteSize, activeSpriteSize);
+
+      document.getElementById('previewModalLabel').innerText = `Preview: ${animId} - Frame ${col + 1}`;
+      document.getElementById('cellPreviewModal').style.display = 'flex';
+    });
+
+    function closeCellPreview() { document.getElementById('cellPreviewModal').style.display = 'none'; }
+
+    async function retryActiveCell() {
+      closeCellPreview();
+      if (!activeCell.animId) return;
+      const { animId, frameIndex, row, col } = activeCell;
+
+      setSpriteStatus(`🔄 Retrying ${animId} Frame ${frameIndex + 1}...`, 'active');
+      showSpriteProgress(true);
+      setProgress(0);
+
+      try {
+        if (!baseRefBlob) throw new Error("Reference image lost. Generate a new reference first.");
+        const baseRefUploadName = await uploadImageToComfy(baseRefBlob, `sprite_ref_${Date.now()}.png`);
+
+        const animPrompt = animDefinitions[animId] ? animDefinitions[animId].prompt : '';
+        const workflowData = buildImg2ImgWorkflow(
+          baseRefUploadName,
+          animPrompt,
+          document.getElementById('promptInput').value.trim(),
+          document.getElementById('negativeInput').value.trim()
+        );
+
+        const qRes = await fetch(`http://${COMFY_API}/prompt`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
+        });
+        if (!qRes.ok) throw new Error('Failed to queue retry job.');
+        const { prompt_id } = await qRes.json();
+
+        const outFilename = await pollHistory(prompt_id);
+        const imgUrl = `http://${COMFY_API}/view?filename=${outFilename}&type=output`;
+
+        await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.getElementById('spriteCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+            ctx.drawImage(img, 0, 0, genSize, genSize, col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+            resolve();
+          };
+          img.onerror = reject;
+          img.src = imgUrl;
+        });
+
+        setSpriteStatus(`✨ Retried ${animId} Frame ${frameIndex + 1} successfully!`, 'success');
+        showSpriteProgress(false);
+
+      } catch (err) {
+        console.error(err);
+        setSpriteStatus(`Error retrying frame: ${err.message}`, 'error');
+        showSpriteProgress(false);
+      }
     }
 
   </script>
