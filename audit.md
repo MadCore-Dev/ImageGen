@@ -296,43 +296,42 @@ The recursive img2img approach accumulates drift over long animation sequences. 
 
 | # | Item | Priority | Effort | Status |
 |---|------|----------|--------|--------|
-| 1 | Fix `animDefinitions` undefined crash in `retryActiveCell` | 🔴 P0 | 15min | ❌ Open |
-| 2 | Fix wrong prompt arg order in `retryActiveCell` | 🔴 P0 | 15min | ❌ Open |
-| 3 | Delete duplicate `approveReference()` definition | 🔴 P0 | 5min | ❌ Open |
-| 4 | Fix canvas click using wrong slider ID (`animFrames` → `frameCountSlider`) | 🔴 P0 | 5min | ❌ Open |
-| 5 | Replace `localStorage` canvas blob with filename-only session + fetch-on-restore | 🔴 P0 | 2hr | ❌ Open |
-| 6 | Settings modal for ComfyUI/TrafficCop addresses + output path | 🔴 P0 | 2hr | ❌ Open |
-| 7 | Extract model filename literals to config constants | 🔴 P0 | 30min | ❌ Open |
-| 8 | Use `selectedAnims` (local) consistently in `startAnimationQueue` | 🟠 P1 | 20min | ❌ Open |
-| 9 | Extract timeline row DOM generation to a reusable function (kill inline styles) | 🟠 P1 | 1hr | ❌ Open |
-| 10 | Split into multi-file project structure (`js/`, `css/`) | 🟠 P1 | 4hr | ❌ Open |
-| 11 | Load ComfyUI workflows from static JSON files | 🟠 P1 | 3hr | ❌ Open |
-| 12 | Fix GIF `transparent` property format issue | 🟡 P2 | 10min | ❌ Open |
-| 13 | GIF export: read delay from FPS slider instead of hardcoded 150ms | 🟡 P2 | 10min | ❌ Open |
-| 14 | `start_gen.sh`: dynamic Python path + auto `open` URL | 🟡 P2 | 15min | ❌ Open |
-| 15 | OOM crash detection: alert + auto Traffic-Cop restart on WS drop during gen | 🟡 P2 | 1hr | ❌ Open |
-| 16 | Canvas overflow fix: horizontal scroll container | 🟡 P2 | 20min | ❌ Open |
-| 17 | Sprite gen: show injected style keywords in status bar | 🟡 P2 | 20min | ❌ Open |
-| 18 | Prompt history sidebar (last 30, with thumbnails) | 🟡 P2 | 3hr | ❌ Open |
-| 19 | Batch generation (1–4 images) for Tab 1 | 🟡 P2 | 2hr | ❌ Open |
-| 20 | Only call `initWebSocket()` after successful Traffic Cop response | 🟢 P3 | 20min | ❌ Open |
-| 21 | Session export/import as JSON | 🟢 P3 | 2hr | ❌ Open |
+| 1 | Fix `animDefinitions` undefined crash in `retryActiveCell` | 🔴 P0 | 15min | ✅ Done |
+| 2 | Fix wrong prompt arg order in `retryActiveCell` | 🔴 P0 | 15min | ✅ Done |
+| 3 | Delete duplicate `approveReference()` definition | 🔴 P0 | 5min | ✅ Done |
+| 4 | Fix canvas click using wrong slider ID (`animFrames` → `frameCountSlider`) | 🔴 P0 | 5min | ✅ Done |
+| 5 | Replace `localStorage` canvas blob with filename-only session + fetch-on-restore | 🔴 P0 | 2hr | ✅ Done |
+| 6 | Settings modal for ComfyUI/TrafficCop addresses + output path | 🔴 P0 | 2hr | ✅ Done |
+| 7 | Extract model filename literals to config constants | 🔴 P0 | 30min | ✅ Done |
+| 8 | Use `selectedAnims` (local) consistently in `startAnimationQueue` | 🟠 P1 | 20min | ✅ Done |
+| 9 | Extract timeline row DOM generation to a reusable function (kill inline styles) | 🟠 P1 | 1hr | ✅ Done |
+| 10 | Split into multi-file project structure (`js/`, `css/`) | 🟠 P1 | 4hr | ⏳ Future |
+| 11 | Load ComfyUI workflows from static JSON files | 🟠 P1 | 3hr | ⏳ Future |
+| 12 | Fix GIF `transparent` property format issue | 🟡 P2 | 10min | ✅ Done |
+| 13 | GIF export: read delay from FPS slider instead of hardcoded 150ms | 🟡 P2 | 10min | ✅ Done |
+| 14 | `start_gen.sh`: dynamic Python path + auto `open` URL | 🟡 P2 | 15min | ✅ Done |
+| 15 | OOM crash detection: alert + auto Traffic-Cop restart on WS drop during gen | 🟡 P2 | 1hr | ✅ Done |
+| 16 | Canvas overflow fix: horizontal scroll container | 🟡 P2 | 20min | ✅ Done |
+| 17 | Sprite gen: show injected style keywords in status bar | 🟡 P2 | 20min | ✅ Done |
+| 18 | Prompt history sidebar (last 20, with thumbnails) | 🟡 P2 | 3hr | ✅ Done |
+| 19 | Batch generation (1–4 images) for Tab 1 | 🟡 P2 | 2hr | ✅ Done |
+| 20 | Only call `initWebSocket()` after successful Traffic Cop response | 🟢 P3 | 20min | ✅ Done |
+| 21 | Session export/import as JSON | 🟢 P3 | 2hr | ✅ Done |
 | 22 | Descriptive filenames for sprite sheet + ZIP exports | 🟢 P3 | 15min | ✅ Done |
-| 23 | LoRA support in GGUF workflow | 🟢 P3 | 2hr | ❌ Open |
-| 24 | FastAPI backend upgrade + SwiftBar integration | 🟢 P3 | 4hr | ❌ Open |
-| 31 | ComfyUI `/input` folder cleanup after generation (disk bloat) | 🟠 P1 | 2hr | ❌ Open |
-| 32 | Revoke `URL.createObjectURL` blobs after use (memory leak) | 🟠 P1 | 20min | ❌ Open |
-| 33 | `pollHistory` infinite loop trap on ComfyUI node errors | 🟡 P2 | 30min | ❌ Open |
-| 34 | AbortController for cancel button (actually stops in-flight fetch) | 🟡 P2 | 2hr | ❌ Open |
-| 35 | Custom upload resolution cap (prevent OOM from 4K uploads) | 🟡 P2 | 1hr | ❌ Open |
-| 36 | `imageSmoothingEnabled = false` on all canvas 2D contexts | 🟢 P3 | 15min | ❌ Open |
-| 37 | SwiftBar plugin reads `/tmp/.gen_tool_port` for URL + status ping | 🟢 P3 | 30min | ❌ Open |
-| 25 | Native "Send to Unity" button via backend | 🟢 P3 | 3hr | ❌ Open |
-| 26 | ControlNet integration for sprite frame consistency | 🟢 P3 | 4hr | ❌ Open |
-| 27 | Accessibility: aria-label, aria-checked, aria-live | 🟢 P3 | 1hr | ❌ Open |
-| 28 | CSS theme switcher (data-theme, token export) | 🟢 P3 | 1hr | ❌ Open |
-| 29 | Drag-and-drop frame reordering in preview modal | 🟢 P3 | 3hr | ❌ Open |
-| 30 | CSS skeleton loaders + cycling tips during generation | 🟢 P3 | 2hr | ❌ Open |
+| 23 | LoRA support in GGUF workflow | 🟢 P3 | 2hr | ⏳ Future |
+| 24 | FastAPI backend upgrade | 🟢 P3 | 4hr | ⏳ Future |
+| 26 | ControlNet integration for sprite frame consistency | 🟢 P3 | 4hr | ⏳ Future |
+| 27 | Accessibility: aria-label, aria-checked, aria-live | 🟢 P3 | 1hr | ✅ Done |
+| 28 | CSS theme switcher (data-theme, token export) | 🟢 P3 | 1hr | ✅ Done |
+| 29 | Drag-and-drop frame reordering in preview modal | 🟢 P3 | 3hr | ⏳ Future |
+| 30 | CSS skeleton loaders + cycling tips during generation | 🟢 P3 | 2hr | ⏳ Future |
+| 31 | ComfyUI `/input` folder cleanup after generation (disk bloat) | 🟠 P1 | 2hr | ✅ Done |
+| 32 | Revoke `URL.createObjectURL` blobs after use (memory leak) | 🟠 P1 | 20min | ✅ Done |
+| 33 | `pollHistory` infinite loop trap on ComfyUI node errors | 🟡 P2 | 30min | ✅ Done |
+| 34 | AbortController for cancel button (actually stops in-flight fetch) | 🟡 P2 | 2hr | ✅ Done |
+| 35 | Custom upload resolution cap (prevent OOM from 4K uploads) | 🟡 P2 | 1hr | ✅ Done |
+| 36 | `imageSmoothingEnabled = false` on all canvas 2D contexts | 🟢 P3 | 15min | ✅ Done |
+| 37 | SwiftBar plugin — `ai_manager.3s.sh` updated with View Logs shortcut | 🟢 P3 | 30min | ✅ Done |
 
 ---
 
