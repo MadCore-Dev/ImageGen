@@ -74,6 +74,9 @@ export async function startVideoGen() {
             throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);
         }
 
+        // Initialize WebSocket for real-time progress now that ComfyUI is awake
+        import('./api.js').then(({ initWebSocket }) => initWebSocket());
+
         // 2. Build workflow
         setVideoStatus('⚙️ Building AnimateDiff workflow…', 'active');
         const workflowData = await buildAnimateDiffWorkflow(prompt, negPrompt, {

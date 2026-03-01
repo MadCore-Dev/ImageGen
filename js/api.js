@@ -41,16 +41,22 @@ export function initWebSocket() {
             lastComfyActivity = Date.now();
             const data = JSON.parse(event.data);
             const isSpriteTabActive = document.getElementById('tab-spritegen').classList.contains('active');
+            const isVideoTabActive = document.getElementById('tab-videogen').classList.contains('active');
             const isAnimatingQueue = document.getElementById('btnStartAnim')?.disabled;
 
             if (data.type === 'progress') {
                 const { value, max } = data.data;
                 const pc = Math.round((value / max) * 100);
-                setProgress(pc);
+                setProgress(pc); // updates the main progress bar
 
                 if (isSpriteTabActive) {
                     const prefix = isAnimatingQueue ? 'Sequential Queue' : 'Reference Gen';
                     setSpriteStatus(`🎨 ${prefix}: Step ${value}/${max} (${pc}%)`, 'active');
+                } else if (isVideoTabActive) {
+                    import('./ui.js').then(({ setVideoStatus, setVideoProgress }) => {
+                        setVideoProgress(pc);
+                        setVideoStatus(`🎬 Rendering frame ${value}/${max} (${pc}%)`, 'active');
+                    });
                 }
             } else if (data.type === 'executing' && data.data.node) {
                 document.getElementById('loaderLabel').textContent = `Running node ${data.data.node}…`;
@@ -58,6 +64,10 @@ export function initWebSocket() {
                 if (isSpriteTabActive) {
                     const prefix = isAnimatingQueue ? 'Sequential Queue' : 'Reference Gen';
                     setSpriteStatus(`⚙️ ${prefix}: Running Node ${data.data.node}…`, 'active');
+                } else if (isVideoTabActive) {
+                    import('./ui.js').then(({ setVideoStatus }) => {
+                        setVideoStatus(`⚙️ Processing Node ${data.data.node}…`, 'active');
+                    });
                 }
             }
         } catch (_) { }
@@ -102,8 +112,8 @@ export async function pollHistory(prompt_id, signal = null) {
     lastComfyActivity = Date.now();
     while (true) {
         if (signal?.aborted) throw new DOMException('Generation cancelled by user', 'AbortError');
-        if (Date.now() - lastComfyActivity > 30 * 60 * 1000) {
-            throw new Error('ComfyUI generation timed out (30 mins).');
+        if (Date.now() - lastComfyActivity > 60 * 60 * 1000) {
+            throw new Error('ComfyUI generation timed out (60 mins).');
         }
 
         const res = await fetch(`http://${COMFY_API_LIVE}/history/${prompt_id}`);
