@@ -1,8 +1,16 @@
+import {
+    MODEL_FILES,
+    selectedModel,
+    imgWidth,
+    imgHeight,
+    setLastSeed
+} from './config.js';
+
 // ============================================================
 //  WORKFLOW BUILDERS (model-aware routing)
 // ============================================================
 let _workflowCache = {};
-async function loadWorkflowTemplate(name) {
+export async function loadWorkflowTemplate(name) {
     if (_workflowCache[name]) return JSON.parse(JSON.stringify(_workflowCache[name]));
     try {
         const res = await fetch(`workflows/${name}.json`);
@@ -16,7 +24,7 @@ async function loadWorkflowTemplate(name) {
     }
 }
 
-async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
+export async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
     const type = opts.type || selectedModel.type;
     const model = opts.name || selectedModel.name;
     const seed = opts.seed !== undefined ? opts.seed : (parseInt(document.getElementById('seedInput').value) ||
@@ -27,7 +35,7 @@ async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
     const h = opts.height || imgHeight;
     const loraName = document.getElementById('loraInput')?.value.trim();
 
-    lastSeed = seed;
+    setLastSeed(seed);
 
     if (type === 'gguf') {
         const flow = await loadWorkflowTemplate('txt2img_flux');
@@ -76,7 +84,7 @@ async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
     }
 }
 
-async function buildImg2ImgWorkflow(refFilename, positivePrompt, negativePrompt, opts = {}) {
+export async function buildImg2ImgWorkflow(refFilename, positivePrompt, negativePrompt, opts = {}) {
     const type = opts.type || selectedModel.type;
     const model = opts.name || selectedModel.name;
     const seed = Math.floor(Math.random() * 9999999999);

@@ -1,13 +1,13 @@
 // ============================================================
 //  CONSTANTS & STATE
 // ============================================================
-const TRAFFIC_COP = "http://127.0.0.1:5050";
-const COMFY_API = "127.0.0.1:8188";
+export const TRAFFIC_COP = "http://127.0.0.1:5050";
+export const COMFY_API = "127.0.0.1:8188";
 
 // ============================================================
 //  MODEL FILE NAMES — edit here once, reflects everywhere
 // ============================================================
-const MODEL_FILES = {
+export const MODEL_FILES = {
   flux: {
     unet: 'flux1-schnell-Q4_K_S.gguf',
     clip1: 't5xxl_fp8_e4m3fn.safetensors',
@@ -22,7 +22,7 @@ const MODEL_FILES = {
 // ============================================================
 //  MODEL CAPABILITY TABLE
 // ============================================================
-const MODEL_SPECS = {
+export const MODEL_SPECS = {
   gguf: {
     minW: 256, minH: 256,
     minLabel: 'Min: 256×256',
@@ -72,7 +72,7 @@ const MODEL_SPECS = {
 // ============================================================
 //  ART STYLES
 // ============================================================
-const STYLE_MAP = {
+export const STYLE_MAP = {
   photorealistic: {
     modelName: 'Juggernaut-XL_v9.safetensors',
     modelType: 'sdxl',
@@ -142,7 +142,7 @@ const STYLE_MAP = {
 //  ANIMATION TYPES (For stage 2)
 //  Extracted so we can safely iterate and bind.
 // ============================================================
-const ANIMATION_PRESETS = [
+export const ANIMATION_PRESETS = [
   { id: 'Idle', pose: 'standing relaxed, breathing slightly, hands at sides, subtle natural movement' },
   { id: 'Walk', pose: 'walking sequence, legs moving, arms swinging, forward momentum' },
   { id: 'Run', pose: 'running quickly, leaning forward, legs extended, fast pace, dynamic motion' },
@@ -154,32 +154,59 @@ const ANIMATION_PRESETS = [
 ];
 
 // Global State Variables used across modules
-let COMFY_API_LIVE = localStorage.getItem('setting_comfy_api') || COMFY_API;
-let TRAFFIC_COP_LIVE = localStorage.getItem('setting_traffic_cop') || TRAFFIC_COP;
-let OUTPUT_PATH_LIVE = localStorage.getItem('setting_output_path') || '/Users/manojsamal/.ComfyUI/output';
+export let COMFY_API_LIVE = localStorage.getItem('setting_comfy_api') || COMFY_API;
+export let TRAFFIC_COP_LIVE = localStorage.getItem('setting_traffic_cop') || TRAFFIC_COP;
+export let OUTPUT_PATH_LIVE = localStorage.getItem('setting_output_path') || '/Users/manojsamal/.ComfyUI/output';
 
-const CLIENT_ID = Math.random().toString(36).substring(2, 10);
-let socket = null;
-let wsRetries = 0;
-const WS_MAX_RETRIES = 5;
+export const CLIENT_ID = Math.random().toString(36).substring(2, 10);
+export let socket = null;
+export let wsRetries = 0;
+export const WS_MAX_RETRIES = 5;
 
-let baseRefBlob = null;
-let baseRefUploadName = null;
-let activeRefImgName = null;
+export let baseRefBlob = null;
+export let baseRefUploadName = null;
+export let activeRefImgName = null;
 
-let genSize = 64;      
-let currentAnimationGrid = []; 
-let activeCell = { animId: null, frameIndex: null, row: null, col: null }; 
+export let genSize = 64;
+export let activeSpriteSize = 64;
+export let currentAnimationGrid = [];
+export let activeCell = { animId: null, frameIndex: null, row: null, col: null };
 
-let lastSeed = null;
-let lastFilename = null;
+export let lastSeed = null;
+export let lastFilename = null;
 
-let selectedModel = { name: 'flux', type: 'gguf' };
-let imgWidth = 512;
-let imgHeight = 512;
-let activeStyleKw = { positive: '', negative: '' };
+export let selectedModel = { name: 'flux', type: 'gguf' };
+export let imgWidth = 512;
+export let imgHeight = 512;
+export let activeStyleKw = { positive: '', negative: '' };
 
-let canvasCtx = null;
+export let canvasCtx = null;
 
 // AbortControllers for cancellation
 window._currentFetchAbort = null;
+
+export function setComfyApiLive(val) { COMFY_API_LIVE = val; }
+export function setTrafficCopLive(val) { TRAFFIC_COP_LIVE = val; }
+export function setOutputPathLive(val) { OUTPUT_PATH_LIVE = val; }
+
+export function setSocket(val) { socket = val; }
+export function setWsRetries(val) { wsRetries = val; }
+
+export function setBaseRefBlob(val) { baseRefBlob = val; }
+export function setBaseRefUploadName(val) { baseRefUploadName = val; }
+export function setActiveRefImgName(val) { activeRefImgName = val; }
+
+export function setGenSize(val) { genSize = val; }
+export function setActiveSpriteSize(val) { activeSpriteSize = val; }
+export function setCurrentAnimationGrid(val) { currentAnimationGrid = val; }
+export function setActiveCell(val) { activeCell = val; }
+
+export function setLastSeed(val) { lastSeed = val; }
+export function setLastFilename(val) { lastFilename = val; }
+export function setSelectedModel(val) { selectedModel = val; }
+
+export function setImgWidth(val) { imgWidth = val; }
+export function setImgHeight(val) { imgHeight = val; }
+export function setActiveStyleKw(val) { activeStyleKw = val; }
+
+export function setCanvasCtx(val) { canvasCtx = val; }

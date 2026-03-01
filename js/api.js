@@ -1,7 +1,13 @@
+import {
+    COMFY_API_LIVE, CLIENT_ID, socket, wsRetries, WS_MAX_RETRIES,
+    setSocket, setWsRetries
+} from './config.js';
+import { setProgress, setSpriteStatus, setStatus } from './app.js';
+
 // ============================================================
 //  COMFYUI CONNECTION STATUS & WEBSOCKET
 // ============================================================
-async function checkComfyStatus() {
+export async function checkComfyStatus() {
     const pill = document.getElementById('connPill');
     const label = document.getElementById('connLabel');
     try {
@@ -18,18 +24,19 @@ async function checkComfyStatus() {
 
 let lastComfyActivity = Date.now();
 
-function initWebSocket() {
+export function initWebSocket() {
     if (socket && socket.readyState === WebSocket.OPEN) return;
     if (wsRetries >= WS_MAX_RETRIES) {
         console.warn('WebSocket max retries reached. WS progress updates disabled.');
         return;
     }
 
-    socket = new WebSocket(`ws://${COMFY_API_LIVE}/ws?clientId=${CLIENT_ID}`);
+    const newSocket = new WebSocket(`ws://${COMFY_API_LIVE}/ws?clientId=${CLIENT_ID}`);
+    setSocket(newSocket);
 
-    socket.onopen = () => { wsRetries = 0; };
+    newSocket.onopen = () => { setWsRetries(0); };
 
-    socket.onmessage = (event) => {
+    newSocket.onmessage = (event) => {
         try {
             lastComfyActivity = Date.now();
             const data = JSON.parse(event.data);
@@ -56,17 +63,18 @@ function initWebSocket() {
         } catch (_) { }
     };
 
-    socket.onclose = () => {
+    newSocket.onclose = () => {
         const wasMidGeneration = document.getElementById('btnStartAnim')?.disabled ||
             document.getElementById('generateBtn')?.disabled;
-        socket = null;
-        wsRetries++;
+        setSocket(null);
+        let newRetries = wsRetries + 1;
+        setWsRetries(newRetries);
         if (wasMidGeneration) {
             setSpriteStatus('⚠️ ComfyUI disconnected during generation — possible OOM crash. Check Traffic Cop, then retry.', 'error');
             setStatus('⚠️ ComfyUI disconnected mid-generation. Possible out-of-memory crash.', 'error');
         }
-        if (wsRetries < WS_MAX_RETRIES) {
-            const delay = Math.min(2000 * wsRetries, 10000);
+        if (newRetries < WS_MAX_RETRIES) {
+            const delay = Math.min(2000 * newRetries, 10000);
             setTimeout(initWebSocket, delay);
         }
     };
@@ -75,7 +83,7 @@ function initWebSocket() {
 // ============================================================
 //  IMAGE UPLOAD & LONG-POLLING
 // ============================================================
-async function uploadImageToComfy(blob, filename) {
+export async function uploadImageToComfy(blob, filename) {
     const formData = new FormData();
     formData.append('image', blob, filename);
     formData.append('type', 'input');
@@ -90,36 +98,29 @@ async function uploadImageToComfy(blob, filename) {
     return data.name;
 }
 
-async function pollHistory(prompt_id) {
-    return new Promise((resolve, reject) => {
-        let attempts = 0;
-        const interval = setInterval(async () => {
-            try {
-                attempts++;
-                const res = await fetch(`http://${COMFY_API_LIVE}/history/${prompt_id}`);
-                const data = await res.json();
+export async function pollHistory(prompt_id, signal = null) {
+    lastComfyActivity = Date.now();
+    while (true) {
+        if (signal?.aborted) throw new DOMException('Generation cancelled by user', 'AbortError');
+        if (Date.now() - lastComfyActivity > 30 * 60 * 1000) {
+            throw new Error('ComfyUI generation timed out (30 mins).');
+        }
 
-                if (data[prompt_id]) {
-                    clearInterval(interval);
-                    const outputs = data[prompt_id].outputs;
-                    let filename = null;
-                    for (const nodeId in outputs) {
-                        if (outputs[nodeId].images && outputs[nodeId].images.length > 0) {
-                            filename = outputs[nodeId].images[0].filename;
-                            break;
-                        }
-                    }
-                    if (filename) resolve(filename);
-                    else reject(new Error('No images found in workflow output'));
-                } else if (data.error || attempts > 600) {
-                    // Also trap endless loops if the node failed but history didn't populate an image.
-                    clearInterval(interval);
-                    reject(new Error(data.error || 'Timeout polling history. Check ComfyUI terminal for node errors.'));
-                }
-            } catch (err) {
-                clearInterval(interval);
-                reject(err);
+        const res = await fetch(`http://${COMFY_API_LIVE}/history/${prompt_id}`);
+        const history = await res.json();
+
+        if (history[prompt_id]) {
+            const entry = history[prompt_id];
+            if (entry?.error) throw new Error(`ComfyUI job failed: ${JSON.stringify(entry.error)}`);
+            if (entry?.status?.completed === true && !entry.outputs) {
+                throw new Error('ComfyUI job completed with no output.');
             }
-        }, 1000);
-    });
+            const outputs = entry.outputs;
+            if (outputs) {
+                const nodeKey = Object.keys(outputs).find(k => outputs[k].images);
+                if (nodeKey) return outputs[nodeKey].images[0].filename;
+            }
+        }
+        await new Promise(r => setTimeout(r, 2000));
+    }
 }

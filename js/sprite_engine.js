@@ -1,17 +1,32 @@
+import {
+    activeSpriteSize, setActiveSpriteSize,
+    MODEL_SPECS, selectedModel, activeStyleKw,
+    genSize, setGenSize,
+    TRAFFIC_COP_LIVE, COMFY_API_LIVE, CLIENT_ID,
+    baseRefBlob, setBaseRefBlob,
+    baseRefUploadName, setBaseRefUploadName,
+    ANIMATION_PRESETS,
+    canvasCtx, setCanvasCtx,
+    currentAnimationGrid, setCurrentAnimationGrid
+} from './config.js';
+import { pollHistory, uploadImageToComfy } from './api.js';
+import { setSpriteStatus, showSpriteProgress, setProgress, setTabActivity } from './app.js';
+import { buildWorkflow, buildImg2ImgWorkflow } from './workflows.js';
+import { saveSession, loadSession, clearSession } from './session.js';
+import { playAnimationLoop, retryAnimationRow } from './canvas.js';
+
 // ============================================================
 //  SPRITE SHEET STAGE 1: REFERENCE GENERATION
 // ============================================================
 
-let activeSpriteSize = 64;
-
-function setSpriteSize(size, btn) {
-    activeSpriteSize = size;
+export function setSpriteSize(size, btn) {
+    setActiveSpriteSize(size);
     const btns = btn.parentElement.querySelectorAll('.preset-btn');
     btns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 }
 
-async function generateSpriteRef() {
+export async function generateSpriteRef() {
     const userPrompt = document.getElementById('spritePrompt').value.trim();
     if (!userPrompt) {
         setSpriteStatus('Please describe your character first.', 'error');
@@ -20,7 +35,7 @@ async function generateSpriteRef() {
     }
 
     const minW = MODEL_SPECS[selectedModel.type]?.minW || 512;
-    genSize = Math.max(activeSpriteSize, minW);
+    setGenSize(Math.max(activeSpriteSize, minW));
 
     let posKw = activeStyleKw.positive || 'pixel art, 16-bit, retro game sprite, isolated on solid white background, full body';
     let negKw = activeStyleKw.negative || 'photorealistic, blurry, noise, 3d, realistic, background details';
@@ -97,7 +112,8 @@ async function generateSpriteRef() {
         document.getElementById('spriteRefImg').style.display = 'block';
 
         const imgRes = await fetch(imgUrl);
-        baseRefBlob = await imgRes.blob();
+        const blobResult = await imgRes.blob();
+        setBaseRefBlob(blobResult);
 
         document.getElementById('btnApproveRef').disabled = false;
 
@@ -118,7 +134,7 @@ async function generateSpriteRef() {
 //  SPRITE SHEET STAGE 2: CONFIGURATION
 // ============================================================
 
-async function handleCustomUpload(event) {
+export async function handleCustomUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -129,7 +145,7 @@ async function handleCustomUpload(event) {
     try {
         const maxSide = Math.max(activeSpriteSize * 4, 1024);
         const resizedBlob = await resizeImageBlob(file, maxSide);
-        baseRefBlob = resizedBlob;
+        setBaseRefBlob(resizedBlob);
         const imgUrl = URL.createObjectURL(resizedBlob);
 
         const prevSrc = document.getElementById('spriteRefImg').src;
@@ -173,17 +189,20 @@ function resizeImageBlob(blob, maxSide) {
     });
 }
 
-function selectSpriteModel(el) {
+// Keep selectedSpriteModel locally scoped
+let selectedSpriteModel = { name: 'flux', type: 'gguf' };
+
+export function selectSpriteModel(el) {
     document.querySelectorAll('#spriteModelGrid .sprite-model-chip').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
     selectedSpriteModel = { name: el.dataset.model, type: el.dataset.type };
 }
 
-function getSpriteModel() {
+export function getSpriteModel() {
     return selectedSpriteModel;
 }
 
-function initAnimationPicker() {
+export function initAnimationPicker() {
     const container = document.getElementById('animationPicker');
     container.innerHTML = '';
     ANIMATION_PRESETS.forEach(anim => {
@@ -200,7 +219,9 @@ function getCheckedAnimIds() {
     return Array.from(activeBtns).map(btn => ANIMATION_PRESETS.find(p => p.name === btn.innerText).id);
 }
 
-function toggleAnimationSelection(animId, btn) {
+let selectedAnimations = [];
+
+export function toggleAnimationSelection(animId, btn) {
     btn.classList.toggle('active');
     selectedAnimations = getCheckedAnimIds();
 
@@ -211,7 +232,7 @@ function toggleAnimationSelection(animId, btn) {
     document.getElementById('btnStartAnim').disabled = selectedAnimations.length === 0;
 }
 
-function renderPoseOverrides() {
+export function renderPoseOverrides() {
     const container = document.getElementById('poseOverrideContainer');
     container.innerHTML = '';
     if (selectedAnimations.length === 0) return;
@@ -248,11 +269,12 @@ function renderPoseOverrides() {
     });
 }
 
-function approveReference() {
+export function approveReference() {
     const imgEl = document.getElementById('spriteRefImg');
     const src = imgEl.src;
 
-    baseRefUploadName = null;
+    setBaseRefUploadName(null);
+    let referenceImageFilename = null;
 
     if (src.startsWith('blob:')) {
         referenceImageFilename = '__blob__';
@@ -271,12 +293,11 @@ function approveReference() {
 // ============================================================
 //  SPRITE SHEET STAGE 3: QUEUE ENGINE 
 // ============================================================
-let canvasCtx = null;
 let cancelGenerationFlag = false;
 let _generationAbortController = null;
 let _tempUploads = [];
 
-function buildTimelineRow(animId, preset, framesCount, rowIndex) {
+export function buildTimelineRow(animId, preset, framesCount, rowIndex) {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'timeline-row';
 
@@ -309,7 +330,7 @@ function buildTimelineRow(animId, preset, framesCount, rowIndex) {
     return { rowDiv, framesDiv, playBtn, retryRowBtn };
 }
 
-function cancelAnimationQueue() {
+export function cancelAnimationQueue() {
     cancelGenerationFlag = true;
     if (_generationAbortController) {
         _generationAbortController.abort();
@@ -320,9 +341,9 @@ function cancelAnimationQueue() {
     document.getElementById('btnCancelAnim').textContent = 'Cancelling...';
 }
 
-async function startAnimationQueue() {
+export async function startAnimationQueue() {
     const selectedAnims = getCheckedAnimIds();
-    currentAnimationGrid = selectedAnims;
+    setCurrentAnimationGrid(selectedAnims);
     if (selectedAnims.length === 0) {
         alert("Please select at least one animation format.");
         return;
@@ -331,7 +352,7 @@ async function startAnimationQueue() {
     _generationAbortController = new AbortController();
     const abortSignal = _generationAbortController.signal;
 
-    baseRefUploadName = null;
+    setBaseRefUploadName(null);
     cancelGenerationFlag = false;
 
     const framesCount = parseInt(document.getElementById('frameCountSlider').value) || 8;
@@ -361,9 +382,10 @@ async function startAnimationQueue() {
     canvas.height = activeSpriteSize * selectedAnims.length;
     canvas.style.display = 'block';
     document.getElementById('canvasEmptyMsg').style.display = 'none';
-    canvasCtx = canvas.getContext('2d');
-    canvasCtx.imageSmoothingEnabled = false;
-    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    const newCtx = canvas.getContext('2d');
+    setCanvasCtx(newCtx);
+    newCtx.imageSmoothingEnabled = false;
+    newCtx.clearRect(0, 0, canvas.width, canvas.height);
 
     _tempUploads = [];
     if (!baseRefUploadName) {
@@ -372,8 +394,9 @@ async function startAnimationQueue() {
         try {
             const res = await fetch(src);
             const blob = await res.blob();
-            baseRefUploadName = await uploadImageToComfy(blob, `ref_${Date.now()}.png`);
-            _tempUploads.push(baseRefUploadName);
+            const newBlobName = await uploadImageToComfy(blob, `ref_${Date.now()}.png`);
+            setBaseRefUploadName(newBlobName);
+            _tempUploads.push(newBlobName);
         } catch (err) {
             setSpriteStatus(`Upload failed: ${err.message}`, 'error');
             btn.disabled = false;
@@ -551,7 +574,7 @@ let _reorderList = [];
 let _reorderAnimId = '';
 let _dragSrcIdx = null;
 
-function showFrameReorder() {
+export function showFrameReorder() {
     const session = loadSession(false);
     if (!session?.completedFrames) return;
     const anims = Object.keys(session.completedFrames).filter(id => (session.completedFrames[id] || []).length > 0);
@@ -614,7 +637,7 @@ function buildThumbRow(animId) {
     });
 }
 
-function applyFrameReorder() {
+export function applyFrameReorder() {
     const session = loadSession(false);
     if (!session) return;
     session.completedFrames[_reorderAnimId] = _reorderList;
@@ -641,7 +664,7 @@ function applyFrameReorder() {
     setSpriteStatus(`✅ Frame order applied for ${_reorderAnimId}`, 'success');
 }
 
-function hideFrameReorder() {
+export function hideFrameReorder() {
     document.getElementById('frameReorderStrip').style.display = 'none';
     document.getElementById('frameThumbRow').innerHTML = '';
     _reorderList = [];

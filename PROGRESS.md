@@ -188,4 +188,23 @@
 
 | Remaining | Notes |
 |-----------|-------|
-| `#10` Modularization | Full file split — large session |
+| `#10` Modularization | **✅ COMPLETE** — Split `index.html` into `js/config`, `js/api`, `js/workflows`, `js/session`, `js/canvas`, `js/sprite_engine`, and `js/app`. Pushed to `dev/refactoring_ddmmyyyy`. |
+
+## Chunk 6 — Architecture Phase 2 (ES6 Modules) ⚡
+**Status:** ✅ COMPLETE
+
+**#38 — Fix `pollHistory` regression**
+- Reintroduced `AbortSignal` handling for proper generation cancellation.
+
+**#39 — Extract CSS**
+- Moved all inline styles from `index.html` to a dedicated `css/styles.css` file.
+
+**#40 — ES6 Modules Conversion**
+- Converted all scripts (`config.js`, `api.js`, `workflows.js`, `session.js`, `canvas.js`, `sprite_engine.js`, `app.js`) to use standard ES6 `import`/`export` syntax.
+- Switched `<script>` tags in `index.html` to a single `<script type="module" src="js/app.js"></script>`.
+
+**#41 — Global State Management & HTML Event Bindings**
+- Refactored all global variables across modules to use setter functions (e.g., `setComfyApiLive()`, `setImgWidth()`).
+- Restored missing UI functions from the original monolith split (e.g., `openSettings`, `applyTheme`).
+- Mounted necessary functions to the `window` object in `app.js` to preserve the existing `onclick=""` inline bindings in the HTML, striking a balance between module encapsulation and avoiding a full DOM rewrite.
+

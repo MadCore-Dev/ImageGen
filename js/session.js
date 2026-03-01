@@ -1,10 +1,22 @@
+import {
+    ANIMATION_PRESETS,
+    activeSpriteSize, setActiveSpriteSize,
+    COMFY_API_LIVE,
+    baseRefUploadName, setBaseRefUploadName,
+    canvasCtx, setCanvasCtx,
+    currentAnimationGrid, setCurrentAnimationGrid
+} from './config.js';
+import { initWebSocket, pollHistory, uploadImageToComfy } from './api.js';
+import { setSpriteStatus, showSpriteProgress } from './app.js';
+import { playAnimationLoop, retryAnimationRow } from './canvas.js';
+
 // ============================================================
 //  SESSION PERSISTENCE (localStorage-based recovery)
 // ============================================================
 const SESSION_KEY = 'epoch_sprite_session';
 const SESSION_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4 hours
 
-function saveSession(updates) {
+export function saveSession(updates) {
     try {
         const existing = loadSession(false) || { version: 1, timestamp: Date.now(), completedFrames: {} };
         const merged = Object.assign(existing, updates, { timestamp: Date.now() });
@@ -12,7 +24,7 @@ function saveSession(updates) {
     } catch (e) { console.warn('Session save failed:', e); }
 }
 
-function loadSession(checkAge = true) {
+export function loadSession(checkAge = true) {
     try {
         const raw = localStorage.getItem(SESSION_KEY);
         if (!raw) return null;
@@ -25,16 +37,16 @@ function loadSession(checkAge = true) {
     } catch (e) { return null; }
 }
 
-function clearSession() {
+export function clearSession() {
     localStorage.removeItem(SESSION_KEY);
 }
 
-function dismissSession() {
+export function dismissSession() {
     clearSession();
     document.getElementById('recoveryBanner').style.display = 'none';
 }
 
-function checkForRecovery() {
+export function checkForRecovery() {
     const s = loadSession();
     if (!s) return;
 
@@ -53,7 +65,7 @@ function checkForRecovery() {
     document.getElementById('recoveryBanner').style.display = 'block';
 }
 
-async function resumeSession() {
+export async function resumeSession() {
     const s = loadSession(false);
     if (!s) { dismissSession(); return; }
 
@@ -61,8 +73,8 @@ async function resumeSession() {
     document.getElementById('btnResumeSession').disabled = true;
 
     // --- 1. Restore global config state ---
-    currentAnimationGrid = s.selectedAnimations || [];
-    activeSpriteSize = s.spriteSize || 64;
+    setCurrentAnimationGrid(s.selectedAnimations || []);
+    setActiveSpriteSize(s.spriteSize || 64);
 
     // --- 2. Restore canvas from snapshot ---
     const canvas = document.getElementById('spriteCanvas');
@@ -71,13 +83,14 @@ async function resumeSession() {
     canvas.height = activeSpriteSize * (s.selectedAnimations || []).length;
     canvas.style.display = 'block';
     document.getElementById('canvasEmptyMsg').style.display = 'none';
-    canvasCtx = canvas.getContext('2d');
-    canvasCtx.imageSmoothingEnabled = false; // crisp pixel-art scaling
+    const newCtx = canvas.getContext('2d');
+    setCanvasCtx(newCtx);
+    newCtx.imageSmoothingEnabled = false; // crisp pixel-art scaling
 
     if (s.canvasData) {
         await new Promise(resolve => {
             const img = new Image();
-            img.onload = () => { canvasCtx.drawImage(img, 0, 0); resolve(); };
+            img.onload = () => { newCtx.drawImage(img, 0, 0); resolve(); };
             img.onerror = resolve;
             img.src = s.canvasData;
         });
@@ -144,7 +157,7 @@ async function resumeSession() {
     }
 
     // --- 4. Reconnect to active poll or restart from missing frame ---
-    baseRefUploadName = s.baseRefUploadName || null;
+    setBaseRefUploadName(s.baseRefUploadName || null);
     const activeAnimId = s.activeAnimId;
     const activePromptId = s.activePromptId;
     const startFrameIndex = s.activeFrameIndex ?? 0;
@@ -205,7 +218,7 @@ async function resumeSession() {
 // ============================================================
 //  SESSION EXPORT / IMPORT
 // ============================================================
-function exportSessionJSON() {
+export function exportSessionJSON() {
     const session = loadSession(false);
     const exportData = {
         _exportedAt: new Date().toISOString(),
@@ -231,7 +244,7 @@ function exportSessionJSON() {
     setSpriteStatus('📤 Session exported to JSON!', 'success');
 }
 
-function importSessionJSON(event) {
+export function importSessionJSON(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();

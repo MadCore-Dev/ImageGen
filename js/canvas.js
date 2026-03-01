@@ -1,7 +1,24 @@
+import {
+    currentAnimationGrid,
+    activeSpriteSize,
+    activeCell, setActiveCell,
+    ANIMATION_PRESETS,
+    canvasCtx,
+    baseRefUploadName,
+    activeStyleKw,
+    COMFY_API_LIVE,
+    CLIENT_ID,
+    baseRefBlob
+} from './config.js';
+import { uploadImageToComfy, pollHistory } from './api.js';
+import { buildImg2ImgWorkflow } from './workflows.js';
+import { setSpriteStatus, showSpriteProgress, setProgress } from './app.js';
+import { getSpriteModel } from './sprite_engine.js';
+
 // ============================================================
 //  STAGE 4: SHEET EXPORT & SINGLE FRAME LOGIC
 // ============================================================
-function downloadSpriteSheet() {
+export function downloadSpriteSheet() {
     const canvas = document.getElementById('spriteCanvas');
     const dataUrl = canvas.toDataURL('image/png');
     const a = document.createElement('a');
@@ -15,7 +32,7 @@ function downloadSpriteSheet() {
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
-async function downloadFramesZip() {
+export async function downloadFramesZip() {
     const canvas = document.getElementById('spriteCanvas');
     if (!currentAnimationGrid || currentAnimationGrid.length === 0) return;
     const framesCount = parseInt(document.getElementById('frameCountSlider').value, 10) || 8;
@@ -50,7 +67,7 @@ async function downloadFramesZip() {
 }
 
 // Canvas click detection setup (extracted into an exportable init function)
-function initCanvasEventListeners() {
+export function initCanvasEventListeners() {
     document.getElementById('spriteCanvas')?.addEventListener('click', (e) => {
         if (!currentAnimationGrid || currentAnimationGrid.length === 0) return;
 
@@ -69,7 +86,7 @@ function initCanvasEventListeners() {
         if (col >= framesCount) return;
 
         const animId = currentAnimationGrid[row];
-        activeCell = { animId, frameIndex: col, row, col };
+        setActiveCell({ animId, frameIndex: col, row, col });
 
         const previewCanvas = document.getElementById('cellPreviewCanvas');
         previewCanvas.width = activeSpriteSize;
@@ -94,7 +111,7 @@ function initCanvasEventListeners() {
 let animationPreviewInterval = null;
 let activeAnimationData = null;
 
-function playAnimationLoop(animId, row, framesCount) {
+export function playAnimationLoop(animId, row, framesCount) {
     activeAnimationData = { animId, row, framesCount };
     document.getElementById('previewModalLabel').innerText = `Preview: ${animId} (Animation Loop)`;
     document.getElementById('modalRetryText').style.display = 'none';
@@ -125,7 +142,7 @@ function playAnimationLoop(animId, row, framesCount) {
     }, frameDuration);
 }
 
-function closeCellPreview() {
+export function closeCellPreview() {
     document.getElementById('cellPreviewModal').style.display = 'none';
     if (animationPreviewInterval) {
         clearInterval(animationPreviewInterval);
@@ -133,14 +150,14 @@ function closeCellPreview() {
     }
 }
 
-function updatePreviewFps(val) {
+export function updatePreviewFps(val) {
     document.getElementById('fpsLabel').innerText = parseFloat(val).toFixed(1);
     if (!activeAnimationData || !animationPreviewInterval) return;
     const { animId, row, framesCount } = activeAnimationData;
     playAnimationLoop(animId, row, framesCount);
 }
 
-async function copyFrameToClipboard() {
+export async function copyFrameToClipboard() {
     const canvas = document.getElementById('cellPreviewCanvas');
     const btn = document.getElementById('btnCopyFrame');
     try {
@@ -157,7 +174,7 @@ async function copyFrameToClipboard() {
     }
 }
 
-async function retryAnimationRow(animId, rowIndex, framesCount) {
+export async function retryAnimationRow(animId, rowIndex, framesCount) {
     const preset = ANIMATION_PRESETS.find(p => p.id === animId);
     if (!preset || !canvasCtx || !baseRefUploadName) return;
 
@@ -225,7 +242,7 @@ async function retryAnimationRow(animId, rowIndex, framesCount) {
     setSpriteStatus(`✅ Row ${animId} retried!`, 'success');
 }
 
-async function exportActiveAnimationGif() {
+export async function exportActiveAnimationGif() {
     if (!activeAnimationData) return;
     const btn = document.getElementById('btnDownloadGif');
     const ogText = btn.innerText;
@@ -276,7 +293,7 @@ async function exportActiveAnimationGif() {
     }
 }
 
-async function retryActiveCell() {
+export async function retryActiveCell() {
     closeCellPreview();
     if (!activeCell.animId) return;
     const { animId, frameIndex, row, col } = activeCell;

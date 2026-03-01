@@ -1,20 +1,41 @@
+import {
+    COMFY_API_LIVE, setComfyApiLive,
+    TRAFFIC_COP_LIVE, setTrafficCopLive,
+    OUTPUT_PATH_LIVE, setOutputPathLive,
+    CLIENT_ID, wsRetries, setWsRetries, socket,
+    lastSeed, setLastSeed,
+    lastFilename, selectedModel,
+    imgWidth, setImgWidth,
+    imgHeight, setImgHeight,
+    activeStyleKw,
+    MODEL_SPECS, STYLE_MAP
+} from './config.js';
+import { checkComfyStatus, initWebSocket, pollHistory } from './api.js';
+import { buildWorkflow } from './workflows.js';
+import { checkForRecovery } from './session.js';
+import { initCanvasEventListeners } from './canvas.js';
+import { selectSpriteModel } from './sprite_engine.js';
+import { initAnimationPicker } from './sprite_engine.js';
+
 // ============================================================
 //  MAIN GENERATOR ORCHESTRATION & APP INIT
 // ============================================================
 
 // --- UI / Navigation Events ---
-function switchTab(tabId) {
+export function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById(`tab-${tabId}`).classList.add('active');
     const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
     if (tabBtn) tabBtn.classList.add('active');
 }
+window.switchTab = switchTab;
 
-function setTabActivity(tabId, active) {
+export function setTabActivity(tabId, active) {
     const btn = document.getElementById(`btnTab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
     if (btn) btn.classList.toggle('has-activity', active);
 }
+window.setTabActivity = setTabActivity;
 
 function updateCharCount() {
     const v = document.getElementById('promptInput').value.length;
@@ -57,14 +78,15 @@ function toggleHistoryPanel() {
 }
 
 // --- Status + Visuals ---
-function setStatus(msg, state = 'idle') {
+export function setStatus(msg, state = 'idle') {
     const bar = document.getElementById('statusBar');
     const text = document.getElementById('statusText');
     bar.className = 'status-bar ' + state;
     text.textContent = msg;
 }
+window.setStatus = setStatus;
 
-function setProgress(pc) {
+export function setProgress(pc) {
     const isSpriteTab = document.getElementById('tab-spritegen').classList.contains('active');
     if (isSpriteTab) {
         const sBar = document.getElementById('spriteProgressBar');
@@ -78,8 +100,9 @@ function setProgress(pc) {
         if (pct) pct.textContent = `${pc}%`;
     }
 }
+window.setProgress = setProgress;
 
-function setSpriteStatus(msg, state = 'idle') {
+export function setSpriteStatus(msg, state = 'idle') {
     const bar = document.getElementById('spriteStatusBar');
     const text = document.getElementById('spriteStatusText');
     if (!bar || !text) return;
@@ -87,6 +110,7 @@ function setSpriteStatus(msg, state = 'idle') {
     bar.className = 'status-bar ' + state;
     text.textContent = msg;
 }
+window.setSpriteStatus = setSpriteStatus;
 
 const TIPS = [
     '💡 Lower CFG (1.0 for FLUX) keeps images more creative',
@@ -134,13 +158,14 @@ function showProgress(visible) {
     else { stopTipCycle(); setProgress(0); }
 }
 
-function showSpriteProgress(visible) {
+export function showSpriteProgress(visible) {
     const c = document.getElementById('spriteProgressContainer');
     if (c) c.classList.toggle('visible', visible);
     document.getElementById('spriteLoaderWrap')?.classList.toggle('skeleton-shimmer', visible);
     if (visible) startTipCycle('spriteTipText');
     else { stopTipCycle(); setProgress(0); }
 }
+window.showSpriteProgress = showSpriteProgress;
 
 // --- App State Initializers ---
 function applyTheme() {
@@ -426,13 +451,126 @@ let generateImage = async function () {
 };
 
 
+// ============================================================
+//  MISSING UI FUNCTIONS (Restored from before split)
+// ============================================================
+export function loadSettings() {
+    setComfyApiLive(localStorage.getItem('setting_comfy_api') || COMFY_API_LIVE);
+    setTrafficCopLive(localStorage.getItem('setting_traffic_cop') || TRAFFIC_COP_LIVE);
+    setOutputPathLive(localStorage.getItem('setting_output_path') || OUTPUT_PATH_LIVE);
+    const el = document.getElementById('outputFolderPath');
+    if (el) el.textContent = OUTPUT_PATH_LIVE;
+}
+
+export function openSettings() {
+    document.getElementById('settingComfyApi').value = COMFY_API_LIVE;
+    document.getElementById('settingTrafficCop').value = TRAFFIC_COP_LIVE;
+    document.getElementById('settingOutputPath').value = OUTPUT_PATH_LIVE;
+    document.getElementById('settingsModal').classList.add('open');
+}
+
+export function closeSettings() {
+    document.getElementById('settingsModal').classList.remove('open');
+}
+
+export function saveSettings() {
+    const api = document.getElementById('settingComfyApi').value.trim();
+    const tc = document.getElementById('settingTrafficCop').value.trim();
+    const op = document.getElementById('settingOutputPath').value.trim();
+    if (api) { localStorage.setItem('setting_comfy_api', api); setComfyApiLive(api); }
+    if (tc) { localStorage.setItem('setting_traffic_cop', tc); setTrafficCopLive(tc); }
+    if (op) {
+        localStorage.setItem('setting_output_path', op);
+        setOutputPathLive(op);
+        const el = document.getElementById('outputFolderPath');
+        if (el) el.textContent = op;
+    }
+    closeSettings();
+    setWsRetries(0);
+    initWebSocket();
+}
+
+// Close modal on overlay click or Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+document.getElementById('settingsModal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('settingsModal')) closeSettings();
+});
+
+export function updateResolutionPresets(type) {
+    const spec = MODEL_SPECS[type] || MODEL_SPECS.sd15;
+    const container = document.getElementById('presetBtns');
+    if (!container) return;
+    container.innerHTML = '';
+
+    setImgWidth(spec.defaultW);
+    setImgHeight(spec.defaultH);
+
+    spec.presets.forEach((p, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn' + (i === 0 ? ' active' : '');
+        btn.textContent = p.label;
+        btn.onclick = () => setPreset(p.w, p.h, btn);
+        container.appendChild(btn);
+    });
+
+    const minSizePill = document.getElementById('minSizePill');
+    if (minSizePill) minSizePill.textContent = spec.minLabel;
+}
+
+export function setPreset(w, h, btn) {
+    setImgWidth(w);
+    setImgHeight(h);
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+export function selectModel(chip) {
+    document.querySelectorAll('.model-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedModel.name = chip.dataset.model;
+    selectedModel.type = chip.dataset.type;
+
+    const type = chip.dataset.type;
+    updateResolutionPresets(type);
+
+    const stepsSlider = document.getElementById('stepsSlider');
+    const cfgSlider = document.getElementById('cfgSlider');
+
+    if (type === 'gguf') {
+        stepsSlider.value = 4; document.getElementById('stepsVal').textContent = '4';
+        cfgSlider.value = 1; document.getElementById('cfgVal').textContent = '1.0';
+    } else if (type === 'sdxl_lightning') {
+        stepsSlider.value = 6; document.getElementById('stepsVal').textContent = '6';
+        cfgSlider.value = 2; document.getElementById('cfgVal').textContent = '2.0';
+    } else if (type === 'sdxl') {
+        stepsSlider.value = 25; document.getElementById('stepsVal').textContent = '25';
+        cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
+    } else {
+        stepsSlider.value = 20; document.getElementById('stepsVal').textContent = '20';
+        cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
+    }
+}
+
+export function randomizeSeed() {
+    document.getElementById('seedInput').value = '';
+    document.getElementById('seedInput').placeholder = 'Random';
+}
+
+export function lockSeed() {
+    if (lastSeed !== null) {
+        document.getElementById('seedInput').value = lastSeed;
+    } else {
+        setStatus('No seed yet — generate first!', 'error');
+    }
+}
+
 // ⌨️ Keyboard Shortcuts (Cmd+Enter)
 document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         const isSpriteTab = document.getElementById('tab-spritegen').classList.contains('active');
 
         if (!isSpriteTab) {
-            if (!document.getElementById('generateBtn').disabled) generateImage();
+            if (!document.getElementById('generateBtn').disabled) window.generateImage();
         } else {
             if (document.getElementById('stage2Config').style.display === 'block') {
                 if (!document.getElementById('btnStartAnim').disabled) startAnimationQueue();
@@ -444,7 +582,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // App Startup Orchestration
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
     loadSettings();
     applyTheme();
     renderPromptHistory();
@@ -455,14 +593,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const initialChip = document.querySelector('.model-chip.active');
     if (initialChip) { selectModel(initialChip); }
-});
+}
 
 if (document.readyState !== 'loading') {
-    loadSettings();
-    applyTheme();
-    renderPromptHistory();
-    initAnimationPicker();
-    updateResolutionPresets('gguf');
-    initCanvasEventListeners();
-    checkForRecovery();
+    initApp();
+} else {
+    document.addEventListener('DOMContentLoaded', initApp);
 }
+
+// ============================================================
+//  GLOBAL WINDOW BINDINGS FOR INLINE HTML HANDLERS
+// ============================================================
+// From app.js
+window.updateCharCount = updateCharCount;
+window.updateNegCount = updateNegCount;
+window.toggleInfo = toggleInfo;
+window.toggleHistoryPanel = toggleHistoryPanel;
+window.toggleTheme = toggleTheme;
+window.clearPromptHistory = clearPromptHistory;
+window.selectStyle = selectStyle;
+window.clearStyle = clearStyle;
+window.copyOutputPath = copyOutputPath;
+window.downloadImage = downloadImage;
+window.setBatchCount = setBatchCount;
+window.downloadBatchImage = downloadBatchImage;
+window.generateImage = generateImage;
+window.loadSettings = loadSettings;
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.saveSettings = saveSettings;
+window.updateResolutionPresets = updateResolutionPresets;
+window.setPreset = setPreset;
+window.selectModel = selectModel;
+window.randomizeSeed = randomizeSeed;
+window.lockSeed = lockSeed;
+
+// From sprite_engine.js
+window.selectSpriteModel = selectSpriteModel;
+window.initAnimationPicker = initAnimationPicker;
+window.generateSpriteRef = generateSpriteRef;
+window.cancelAnimationQueue = cancelAnimationQueue;
+window.startAnimationQueue = startAnimationQueue;
+window.showFrameReorder = showFrameReorder;
+window.hideFrameReorder = hideFrameReorder;
+window.applyFrameReorder = applyFrameReorder;
+window.approveReference = approveReference;
+window.setSpriteSize = setSpriteSize; // Note: sprite_engine.js didn't export it, I exported it manually
+
+// From canvas.js
+import { downloadSpriteSheet, downloadFramesZip, closeCellPreview, copyFrameToClipboard, exportActiveAnimationGif, retryActiveCell, updatePreviewFps, retryAnimationRow, playAnimationLoop } from './canvas.js';
+window.downloadSpriteSheet = downloadSpriteSheet;
+window.downloadFramesZip = downloadFramesZip;
+window.closeCellPreview = closeCellPreview;
+window.copyFrameToClipboard = copyFrameToClipboard;
+window.exportActiveAnimationGif = exportActiveAnimationGif;
+window.retryActiveCell = retryActiveCell;
+window.updatePreviewFps = updatePreviewFps;
+window.retryAnimationRow = retryAnimationRow;
+window.playAnimationLoop = playAnimationLoop;
+
+// From session.js
+import { exportSessionJSON, importSessionJSON, dismissSession, resumeSession, clearSession } from './session.js';
+window.exportSessionJSON = exportSessionJSON;
+window.importSessionJSON = importSessionJSON;
+window.dismissSession = dismissSession;
+window.resumeSession = resumeSession;
+window.clearSession = clearSession;

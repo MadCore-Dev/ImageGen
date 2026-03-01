@@ -1,0 +1,1613 @@
+    /* ============================================================
+       DESIGN TOKENS
+    ============================================================ */
+    :root {
+      --bg-deep: #0d0d0f;
+      --bg-card: rgba(255, 255, 255, 0.04);
+      --bg-card-hover: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.1);
+      --border-focus: #4f8fff;
+      --text-primary: #f0f0f5;
+      --text-muted: #8b8b9a;
+      --text-dim: #555565;
+      --accent: #4f8fff;
+      --accent-glow: rgba(79, 143, 255, 0.25);
+      --accent-2: #a855f7;
+      --success: #34d399;
+      --error: #f87171;
+      --warning: #fbbf24;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: 0.2s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ============================================================
+       BACKGROUND GRADIENT
+    ============================================================ */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 0%, rgba(79, 143, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ============================================================
+       LAYOUT
+    ============================================================ */
+    .app-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    /* ============================================================
+       HEADER
+    ============================================================ */
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    header p.subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
+       CARDS / GLASS PANELS
+    ============================================================ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      margin-bottom: 16px;
+      transition: border-color var(--transition);
+    }
+
+    .card:focus-within {
+      border-color: rgba(79, 143, 255, 0.4);
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ============================================================
+       MODEL SELECTOR
+    ============================================================ */
+    .model-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .model-chip {
+      padding: 7px 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+
+    .model-chip:hover {
+      background: rgba(79, 143, 255, 0.12);
+      color: #aac4ff;
+      border-color: rgba(79, 143, 255, 0.3);
+    }
+
+    .model-chip.active {
+      background: rgba(79, 143, 255, 0.2);
+      color: #a8c5ff;
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .model-chip .badge {
+      display: inline-block;
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    .badge-flux {
+      background: rgba(168, 85, 247, 0.25);
+      color: #c084fc;
+    }
+
+    .badge-xl {
+      background: rgba(79, 143, 255, 0.2);
+      color: #93c5fd;
+    }
+
+    .badge-15 {
+      background: rgba(52, 211, 153, 0.15);
+      color: #6ee7b7;
+    }
+
+    .badge-speed {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fcd34d;
+    }
+
+    /* ============================================================
+       PROMPTS
+    ============================================================ */
+    textarea {
+      width: 100%;
+      background: transparent;
+      color: var(--text-primary);
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 14px;
+      line-height: 1.6;
+      font-family: inherit;
+      padding: 0;
+    }
+
+    textarea::placeholder {
+      color: var(--text-dim);
+    }
+
+    .prompt-card {
+      position: relative;
+    }
+
+    .prompt-card .char-count {
+      position: absolute;
+      bottom: 8px;
+      right: 14px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* ============================================================
+       CONTROLS ROW
+    ============================================================ */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .control-item label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .control-item input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .control-item input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+
+    .control-item .value-display {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: right;
+      float: right;
+    }
+
+    /* ============================================================
+       PRESET BUTTONS (resolution)
+    ============================================================ */
+    .preset-btns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      padding: 5px 11px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .preset-btn:hover {
+      background: rgba(79, 143, 255, 0.1);
+      color: #aac4ff;
+      border-color: rgba(79, 143, 255, 0.3);
+    }
+
+    .preset-btn.active {
+      background: rgba(79, 143, 255, 0.18);
+      color: #93c5fd;
+      border-color: var(--accent);
+    }
+
+    /* ============================================================
+       ART STYLE GRID (Pill Buttons)
+    ============================================================ */
+    .style-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      /* Room for touch scroll */
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      /* Firefox */
+    }
+
+    .style-grid::-webkit-scrollbar {
+      display: none;
+      /* Chrome, Safari, etc */
+    }
+
+    .style-chip {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      padding: 8px 16px;
+      border-radius: 30px;
+      /* Fully rounded pill shape */
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      gap: 8px;
+      flex-shrink: 0;
+      /* Prevent chips from squeezing together */
+    }
+
+    .style-chip:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .style-chip:active {
+      transform: translateY(0) scale(0.97);
+    }
+
+    .style-chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(79, 143, 255, 0.4);
+    }
+
+    .style-chip .style-icon {
+      font-size: 16px;
+    }
+
+    .style-chip .style-name {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .style-chip .style-sub {
+      display: none;
+      /* Hide subtitle for cleaner pill look */
+    }
+
+    /* Style chips — compact on mobile */
+    @media (max-width: 600px) {
+      .style-grid {
+        gap: 6px;
+      }
+
+      .style-chip {
+        padding: 6px 12px;
+        border-radius: 20px;
+        gap: 6px;
+      }
+
+      .style-chip .style-icon {
+        font-size: 14px;
+      }
+
+      .style-chip .style-name {
+        font-size: 12px;
+      }
+    }
+
+    /* ============================================================
+       INFO TRIGGER & TOOLTIP
+    ============================================================ */
+    .info-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      margin-left: 4px;
+      transition: color var(--transition);
+      vertical-align: middle;
+      user-select: none;
+    }
+
+    .info-trigger:hover {
+      color: var(--accent);
+    }
+
+    .info-tooltip {
+      display: none;
+      background: rgba(20, 25, 40, 0.95);
+      border: 1px solid rgba(79, 143, 255, 0.25);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      animation: fadeIn 0.15s ease;
+    }
+
+    .info-tooltip.visible {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ============================================================
+       SEED ROW
+    ============================================================ */
+    .seed-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .seed-row label {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .seed-row input[type="number"] {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      transition: border var(--transition);
+    }
+
+    .seed-row input[type="number"]:focus {
+      border-color: var(--border-focus);
+    }
+
+    .icon-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .icon-btn:hover {
+      background: rgba(79, 143, 255, 0.1);
+      color: var(--accent);
+      border-color: rgba(79, 143, 255, 0.3);
+    }
+
+    /* ============================================================
+       ACTION BUTTONS
+    ============================================================ */
+    .action-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .btn-generate {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: var(--radius);
+      border: none;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #6b9fff);
+      color: white;
+      letter-spacing: 0.02em;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--transition);
+      box-shadow: 0 4px 20px rgba(79, 143, 255, 0.3);
+    }
+
+    .btn-generate::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .btn-generate:hover::before {
+      opacity: 1;
+    }
+
+    .btn-generate:active {
+      transform: scale(0.99);
+    }
+
+    .btn-generate:disabled {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-dim);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-download {
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: none;
+    }
+
+    .btn-download:hover {
+      background: rgba(52, 211, 153, 0.1);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .btn-download.visible {
+      display: block;
+    }
+
+    /* ============================================================
+       STATUS BAR
+    ============================================================ */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .status-bar.active {
+      border-color: rgba(79, 143, 255, 0.3);
+      color: #93c5fd;
+    }
+
+    .status-bar.success {
+      border-color: rgba(52, 211, 153, 0.3);
+      color: var(--success);
+    }
+
+    .status-bar.error {
+      border-color: rgba(248, 113, 113, 0.3);
+      color: var(--error);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .status-bar.active .status-dot {
+      background: var(--accent);
+      animation: pulse-dot 1.2s ease-in-out infinite;
+    }
+
+    .status-bar.success .status-dot {
+      background: var(--success);
+    }
+
+    .status-bar.error .status-dot {
+      background: var(--error);
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    /* ============================================================
+       PROGRESS BAR
+    ============================================================ */
+    .progress-container {
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 5px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-container.visible {
+      display: block;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #c084fc);
+      border-radius: 5px;
+      transition: width 0.4s ease;
+    }
+
+    /* ============================================================
+       RESULT IMAGE AREA
+    ============================================================ */
+    #result-container {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      background: rgba(255, 255, 255, 0.02);
+      transition: border-color 0.3s;
+    }
+
+    #result-container.has-image {
+      border-style: solid;
+      border-color: rgba(79, 143, 255, 0.2);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .empty-state .icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.3;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* ============================================================
+       LOADER SPINNER (BUG FIX)
+    ============================================================ */
+    .loader-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+      display: none;
+    }
+
+    .loader-wrap.visible {
+      display: flex;
+    }
+
+    .loader {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(255, 255, 255, 0.08);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom: 14px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loader-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    /* ── SKELETON SHIMMER — fix #30 ── */
+    @keyframes shimmer {
+      0% {
+        background-position: -600px 0;
+      }
+
+      100% {
+        background-position: 600px 0;
+      }
+    }
+
+    .skeleton-shimmer {
+      background: linear-gradient(90deg,
+          rgba(255, 255, 255, 0.03) 25%,
+          rgba(255, 255, 255, 0.07) 50%,
+          rgba(255, 255, 255, 0.03) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+
+    .tip-text {
+      font-size: 11px;
+      color: var(--text-dim);
+      max-width: 260px;
+      text-align: center;
+      line-height: 1.5;
+      margin-top: 4px;
+      min-height: 34px;
+      transition: opacity 0.4s;
+      opacity: 0.8;
+    }
+
+    #resultImage {
+      max-width: 100%;
+      max-height: 700px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    /* ============================================================
+       IMAGE META
+    ============================================================ */
+    .image-meta {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 0 0;
+    }
+
+    .image-meta.visible {
+      display: flex;
+    }
+
+    .meta-pill {
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'SF Mono', monospace;
+    }
+
+    /* ============================================================
+       SCROLLBAR
+    ============================================================ */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+
+    /* ============================================================
+       TABS NAVIGATION
+    ============================================================ */
+    .tab-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      padding: 4px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* ============================================================
+       PIXEL INPUT (pose override fields in sprite tab)
+    ============================================================ */
+    .pixel-input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+
+    .pixel-input:focus {
+      border-color: var(--border-focus);
+    }
+
+    /* Cancel button (secondary action) */
+    .btn-cancel {
+      flex: 1;
+      padding: 12px 20px;
+      border: 1px solid var(--error);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--error);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-cancel:hover {
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    /* ============================================================
+       APPROVE BUTTON (#10 / #16 — class-managed, no inline opacity)
+    ============================================================ */
+    .btn-approve {
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px 24px;
+      border-radius: var(--radius);
+      border: none;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--success), #10b981);
+      color: white;
+      letter-spacing: 0.02em;
+      transition: all var(--transition);
+      box-shadow: 0 4px 16px rgba(52, 211, 153, 0.3);
+    }
+
+    .btn-approve:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-approve:not(:disabled):hover {
+      box-shadow: 0 6px 24px rgba(52, 211, 153, 0.45);
+      transform: translateY(-1px);
+    }
+
+    /* ============================================================
+       CSS UTILITY CLASSES (#18 — replace common inline styles)
+    ============================================================ */
+    .lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .hint-dim {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    .gap-sm {
+      margin-top: 10px;
+    }
+
+    .gap-md {
+      margin-top: 16px;
+    }
+
+    .w-full {
+      width: 100%;
+    }
+
+    .flex-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* ============================================================
+       ADVANCED PANEL (collapsible sections)
+    ============================================================ */
+    details.adv-panel {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    details.adv-panel summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      padding: 2px 0;
+      transition: color var(--transition);
+    }
+
+    details.adv-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.adv-panel summary::before {
+      content: '▶';
+      font-size: 8px;
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+
+    details.adv-panel[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    details.adv-panel summary:hover {
+      color: var(--text-primary);
+    }
+
+    details.adv-panel .adv-body {
+      padding-top: 14px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    /* Sprint model selector in sprite advanced panel */
+    .sprite-model-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .sprite-model-chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .sprite-model-chip:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .sprite-model-chip.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ============================================================
+       CONNECTION PILL (header ComfyUI status)
+    ============================================================ */
+    .conn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      margin-top: 8px;
+      transition: all 0.4s ease;
+      cursor: default;
+      user-select: none;
+    }
+
+    .conn-pill .conn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.4s;
+    }
+
+    .conn-pill.online {
+      border-color: rgba(52, 211, 153, 0.3);
+      color: var(--success);
+    }
+
+    .conn-pill.online .conn-dot {
+      background: var(--success);
+      box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .conn-pill.offline {
+      border-color: rgba(248, 113, 113, 0.25);
+      color: var(--error);
+    }
+
+    .conn-pill.offline .conn-dot {
+      background: var(--error);
+    }
+
+    /* Char count warning states */
+    .char-count.warn {
+      color: var(--warning) !important;
+    }
+
+    .char-count.danger {
+      color: var(--error) !important;
+      font-weight: 700;
+    }
+
+    /* Style chip sub-label: only show on hover/active (less clutter) */
+    .style-chip .style-sub {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      font-size: 9px;
+    }
+
+    .style-chip:hover .style-sub,
+    .style-chip.active .style-sub {
+      opacity: 1;
+    }
+
+    /* Pulsing activity dot on tab button */
+    .tab-btn .tab-activity-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--warning);
+      margin-left: 5px;
+      vertical-align: middle;
+      animation: pulse-dot 1s ease-in-out infinite;
+      display: none;
+    }
+
+    .tab-btn.has-activity .tab-activity-dot {
+      display: inline-block;
+    }
+
+    /* Progress % label inline with status */
+    .status-pct {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: 'SF Mono', monospace;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .status-bar.active .status-pct {
+      opacity: 1;
+    }
+
+    /* Empty state CTA hint */
+    .empty-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .empty-hint kbd {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      font-family: 'SF Mono', monospace;
+      font-size: 10px;
+    }
+
+    /* ============================================================
+       RECOVERY BANNER
+    ============================================================ */
+    #recoveryBanner {
+      display: none;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(79, 143, 255, 0.08) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    #recoveryBanner .recovery-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--warning);
+      margin-bottom: 6px;
+    }
+
+    #recoveryBanner .recovery-msg {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    #recoveryBanner .recovery-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    #recoveryBanner .recovery-actions button {
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    #btnResumeSession {
+      background: var(--warning);
+      color: #000;
+    }
+
+    #btnDismissSession {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border) !important;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 600px) {
+      .controls-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .app-wrapper {
+        padding: 20px 14px 40px;
+      }
+
+      header h1 {
+        font-size: 20px;
+      }
+    }
+
+    /* ============================================================
+       TIMELINE ROW — fix #9: class-based, no inline styles
+    ============================================================ */
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .timeline-label {
+      width: 80px;
+      font-weight: bold;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+
+    .timeline-frames {
+      letter-spacing: 2px;
+      flex: 1;
+      font-size: 13px;
+    }
+
+    .timeline-btn {
+      padding: 2px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+
+    .timeline-play {
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .timeline-retry {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .timeline-retry:hover {
+      border-color: var(--warning);
+      color: var(--warning);
+    }
+
+    /* ============================================================
+       SETTINGS MODAL — fix #6
+    ============================================================ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #141420;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 420px;
+      max-width: 90vw;
+      position: relative;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-box h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      color: var(--text-primary);
+    }
+
+    .settings-row {
+      margin-bottom: 14px;
+    }
+
+    .settings-row label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .settings-row input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      font-family: 'SF Mono', monospace;
+      transition: border var(--transition);
+    }
+
+    .settings-row input:focus {
+      border-color: var(--border-focus);
+    }
+
+    .settings-hint {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 3px;
+    }
+
+    .btn-settings-save {
+      width: 100%;
+      margin-top: 8px;
+      padding: 11px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-settings-save:hover {
+      background: #6b9fff;
+    }
+
+    .btn-settings-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    /* ── BATCH PILLS — fix #19 ── */
+    .batch-pill {
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .batch-pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .batch-pill:hover:not(.active) {
+      border-color: var(--border-focus);
+      color: var(--text-primary);
+    }
+
+    /* ── BATCH GRID ── */
+    #batchGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .batch-item {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .batch-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .batch-item .batch-dl {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.6);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      padding: 3px 8px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .batch-item:hover .batch-dl {
+      opacity: 1;
+    }
+
+    /* ── THEME SWITCHER — fix #28 ── */
+    [data-theme="light"] {
+      --bg-primary: #f8f8fc;
+      --bg-card: #ffffff;
+      --bg-input: #f0f0f7;
+      --text-primary: #1a1a2e;
+      --text-muted: #555570;
+      --text-dim: #888899;
+      --border: #d0d0e0;
+      --border-focus: #4d7cff;
+      --shadow: rgba(0, 0, 0, 0.12);
+      --accent-glow: rgba(77, 124, 255, 0.12);
+    }
+
+    .theme-toggle {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* ── FRAME REORDER STRIP — fix #29 ── */
+    .frame-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: 4px;
+      border: 2px solid var(--border);
+      object-fit: contain;
+      image-rendering: pixelated;
+      cursor: grab;
+      flex-shrink: 0;
+      user-select: none;
+      transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .frame-thumb:active {
+      cursor: grabbing;
+      opacity: 0.5;
+    }
+
+    .frame-thumb.drag-over {
+      border-color: var(--accent);
+      transform: scale(1.08);
+    }
+
+    .frame-thumb-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      color: var(--text-dim);
+      position: relative;
+      cursor: grab;
+    }
+
+    .history-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      user-select: none;
+    }
+
+    .history-header:hover {
+      color: var(--text-primary);
+    }
+
+    .history-list {
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      max-height: 280px;
+    }
+
+    .history-list.open {
+      display: flex;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      cursor: pointer;
+      border-top: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+
+    .history-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .history-thumb {
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .history-thumb-ph {
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .history-text {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-clear {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .history-clear:hover {
+      color: #ff6b6b;
+    }
+  </style>
