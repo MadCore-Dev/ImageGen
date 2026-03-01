@@ -62,6 +62,13 @@ function downloadBatchImage(src, idx) {
 // --- Core Generation Orchestration ---
 let _tab1AbortController = null;
 
+/** Syncs bottom nav active state with the given tab ID */
+function syncBottomNav(tabId) {
+    document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.id === `btnBottomTab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
+    });
+}
+
 export function cancelGenerateImage() {
     if (_tab1AbortController) {
         _tab1AbortController.abort();
@@ -399,6 +406,11 @@ export function initEventListeners() {
     if (el_btnTabImagegen) el_btnTabImagegen.addEventListener('click', (e) => { switchTab('imagegen') });
     const el_btnTabSpritegen = document.getElementById('btnTabSpritegen');
     if (el_btnTabSpritegen) el_btnTabSpritegen.addEventListener('click', (e) => { switchTab('spritegen') });
+    // Bottom nav (mobile) — mirrors top tab nav
+    const el_btnBottomTabImagegen = document.getElementById('btnBottomTabImagegen');
+    if (el_btnBottomTabImagegen) el_btnBottomTabImagegen.addEventListener('click', () => { switchTab('imagegen'); syncBottomNav('imagegen'); });
+    const el_btnBottomTabSpritegen = document.getElementById('btnBottomTabSpritegen');
+    if (el_btnBottomTabSpritegen) el_btnBottomTabSpritegen.addEventListener('click', () => { switchTab('spritegen'); syncBottomNav('spritegen'); });
     // Style chips — event delegation
     document.querySelectorAll('.style-chip').forEach(chip => {
         chip.addEventListener('click', (e) => selectStyle(e.currentTarget));
