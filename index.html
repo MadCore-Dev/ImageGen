@@ -1489,7 +1489,42 @@
       background: rgba(255, 255, 255, 0.1);
     }
 
-    /* ── PROMPT HISTORY — fix #18 ── */
+    /* ── FRAME REORDER STRIP — fix #29 ── */
+    .frame-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: 4px;
+      border: 2px solid var(--border);
+      object-fit: contain;
+      image-rendering: pixelated;
+      cursor: grab;
+      flex-shrink: 0;
+      user-select: none;
+      transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .frame-thumb:active {
+      cursor: grabbing;
+      opacity: 0.5;
+    }
+
+    .frame-thumb.drag-over {
+      border-color: var(--accent);
+      transform: scale(1.08);
+    }
+
+    .frame-thumb-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      color: var(--text-dim);
+      position: relative;
+      cursor: grab;
+    }
+
     .history-panel {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -2034,6 +2069,25 @@
             complete</p>
         </div>
 
+        <!-- fix #29: draggable frame reorder strip -->
+        <div id="frameReorderStrip" style="display:none; margin-top:10px;">
+          <div
+            style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px;">
+            🎚️ Reorder Frames — drag to rearrange, then re-export
+          </div>
+          <div id="frameThumbRow" style="display:flex; flex-wrap:nowrap; gap:6px; overflow-x:auto; padding-bottom:4px;">
+          </div>
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+            <select id="reorderAnimSelect"
+              style="flex:1; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; color:var(--text-primary);">
+            </select>
+            <button class="btn-download" onclick="applyFrameReorder()" style="font-size:12px; padding:6px 14px;">✓ Apply
+              Order</button>
+            <button class="btn-download" onclick="hideFrameReorder()"
+              style="font-size:12px; padding:6px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-muted);">Cancel</button>
+          </div>
+        </div>
+
         <div class="action-row" style="margin-top:16px; margin-bottom:0; display:flex; gap:8px;">
           <button class="btn-download" id="downloadSheetBtn" onclick="downloadSpriteSheet()"
             aria-label="Download full sprite sheet as PNG" style="flex:1; display:none;">⬇ Download Full Sheet
@@ -2041,6 +2095,10 @@
           <button class="btn-download" id="downloadZipBtn" onclick="downloadFramesZip()"
             aria-label="Download individual frames as ZIP" style="flex:1; display:none; background:var(--accent-2);">⬇
             Download Individual Frames (ZIP)</button>
+          <!-- Reorder strip toggle button -->
+          <button class="btn-download" id="btnReorderFrames" onclick="showFrameReorder()"
+            style="flex:1; display:none; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px;"
+            aria-label="Reorder frames by dragging">↕ Reorder Frames</button>
           <!-- fix #21: session export/import for backup & portability -->
           <button class="btn-download" id="exportSessionBtn" onclick="exportSessionJSON()"
             aria-label="Export current session config as JSON"
@@ -3578,6 +3636,7 @@
         document.getElementById('downloadZipBtn').style.display = 'block';
         document.getElementById('exportSessionBtn').style.display = 'block'; // fix #21
         document.getElementById('importSessionLabel').style.display = 'block'; // fix #21
+        document.getElementById('btnReorderFrames').style.display = 'block'; // fix #29
         setSpriteStatus('\u2728 Session restored — generation was complete!', 'success');
         return;
       }
@@ -3715,6 +3774,7 @@
         document.getElementById('downloadZipBtn').style.display = 'block';
         document.getElementById('exportSessionBtn').style.display = 'block';
         document.getElementById('importSessionLabel').style.display = 'block';
+        document.getElementById('btnReorderFrames').style.display = 'block'; // fix #29
 
       } catch (err) {
         console.error('Resume failed:', err);
@@ -4110,7 +4170,116 @@
         document.getElementById('downloadZipBtn').style.display = 'block';
         document.getElementById('exportSessionBtn').style.display = 'block';
         document.getElementById('importSessionLabel').style.display = 'block';
+        document.getElementById('btnReorderFrames').style.display = 'block'; // fix #29
       }
+    }
+
+    // ============================================================
+    //  FRAME REORDER — fix #29
+    // ============================================================
+    let _reorderList = [];   // current drag order: array of filename strings
+    let _reorderAnimId = ''; // which animation row is being reordered
+    let _dragSrcIdx = null;
+
+    function showFrameReorder() {
+      const session = loadSession(false);
+      if (!session?.completedFrames) return;
+      const anims = Object.keys(session.completedFrames).filter(id => (session.completedFrames[id] || []).length > 0);
+      if (anims.length === 0) return;
+
+      // Populate animation selector
+      const sel = document.getElementById('reorderAnimSelect');
+      sel.innerHTML = anims.map(id => `<option value="${id}">${id}</option>`).join('');
+      sel.onchange = () => buildThumbRow(sel.value);
+
+      buildThumbRow(anims[0]);
+      document.getElementById('frameReorderStrip').style.display = 'block';
+    }
+
+    function buildThumbRow(animId) {
+      _reorderAnimId = animId;
+      const session = loadSession(false);
+      _reorderList = [...(session?.completedFrames?.[animId] || [])];
+
+      const row = document.getElementById('frameThumbRow');
+      row.innerHTML = '';
+
+      _reorderList.forEach((filename, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'frame-thumb-wrap';
+        wrap.draggable = true;
+        wrap.dataset.idx = i;
+
+        const img = document.createElement('img');
+        img.className = 'frame-thumb';
+        img.src = filename ? `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output` : '';
+        img.alt = `Frame ${i + 1}`;
+        img.draggable = false; // parent handles drag
+
+        const label = document.createElement('span');
+        label.textContent = `F${i + 1}`;
+
+        wrap.appendChild(img);
+        wrap.appendChild(label);
+
+        // HTML5 drag events
+        wrap.addEventListener('dragstart', e => {
+          _dragSrcIdx = parseInt(wrap.dataset.idx);
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => wrap.style.opacity = '0.35', 0);
+        });
+        wrap.addEventListener('dragend', () => { wrap.style.opacity = ''; });
+        wrap.addEventListener('dragover', e => { e.preventDefault(); wrap.querySelector('img').classList.add('drag-over'); });
+        wrap.addEventListener('dragleave', () => wrap.querySelector('img').classList.remove('drag-over'));
+        wrap.addEventListener('drop', e => {
+          e.preventDefault();
+          wrap.querySelector('img').classList.remove('drag-over');
+          const targetIdx = parseInt(wrap.dataset.idx);
+          if (_dragSrcIdx === null || _dragSrcIdx === targetIdx) return;
+          const [moved] = _reorderList.splice(_dragSrcIdx, 1);
+          _reorderList.splice(targetIdx, 0, moved);
+          _dragSrcIdx = null;
+          buildThumbRow(_reorderAnimId); // rebuild with new order
+        });
+
+        row.appendChild(wrap);
+      });
+    }
+
+    function applyFrameReorder() {
+      // Write reordered filenames back to session
+      const session = loadSession(false);
+      if (!session) return;
+      session.completedFrames[_reorderAnimId] = _reorderList;
+      saveSession(session);
+
+      // Redraw the affected canvas row from the new order
+      const canvas = document.getElementById('spriteCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const framesCount = _reorderList.length;
+      const rowIndex = (session.selectedAnimations || Object.keys(session.completedFrames)).indexOf(_reorderAnimId);
+      if (rowIndex < 0) { hideFrameReorder(); return; }
+
+      _reorderList.forEach((filename, col) => {
+        if (!filename) return;
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(col * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+          ctx.drawImage(img, col * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+        };
+        img.src = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output`;
+      });
+
+      hideFrameReorder();
+      setSpriteStatus(`✅ Frame order applied for ${_reorderAnimId}`, 'success');
+    }
+
+    function hideFrameReorder() {
+      document.getElementById('frameReorderStrip').style.display = 'none';
+      document.getElementById('frameThumbRow').innerHTML = '';
+      _reorderList = [];
+      _reorderAnimId = '';
     }
 
     // ============================================================
