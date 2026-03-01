@@ -12,7 +12,7 @@ import {
 } from './config.js';
 import { uploadImageToComfy, pollHistory } from './api.js';
 import { buildImg2ImgWorkflow } from './workflows.js';
-import { setSpriteStatus, showSpriteProgress, setProgress } from './app.js';
+import { setSpriteStatus, showSpriteProgress, setProgress } from './ui.js';
 import { getSpriteModel } from './sprite_engine.js';
 
 // ============================================================
@@ -242,7 +242,7 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
     setSpriteStatus(`✅ Row ${animId} retried!`, 'success');
 }
 
-export async function exportActiveAnimationGif() {
+export function exportActiveAnimationGif() {
     if (!activeAnimationData) return;
     const btn = document.getElementById('btnDownloadGif');
     const ogText = btn.innerText;

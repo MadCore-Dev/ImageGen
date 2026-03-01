@@ -10,7 +10,7 @@ import {
     currentAnimationGrid, setCurrentAnimationGrid
 } from './config.js';
 import { pollHistory, uploadImageToComfy } from './api.js';
-import { setSpriteStatus, showSpriteProgress, setProgress, setTabActivity } from './app.js';
+import { setSpriteStatus, showSpriteProgress, setProgress, setTabActivity } from './ui.js';
 import { buildWorkflow, buildImg2ImgWorkflow } from './workflows.js';
 import { saveSession, loadSession, clearSession } from './session.js';
 import { playAnimationLoop, retryAnimationRow } from './canvas.js';
@@ -537,8 +537,11 @@ export async function startAnimationQueue() {
                 status.div.innerText = timelineStr;
 
             } catch (err) {
+                if (err.name === 'AbortError' || cancelGenerationFlag) {
+                    break; // cancel requested — exit frame loop cleanly
+                }
                 console.error(err);
-                timelineStr = '\u2705'.repeat(c) + '\u274c' + '\u2b1c'.repeat(framesCount - c - 1);
+                timelineStr = '✅'.repeat(c) + '❌' + '⬜'.repeat(framesCount - c - 1);
                 status.div.innerText = timelineStr;
                 setSpriteStatus(`Error on ${animId} frame ${c + 1}: ${err.message} — Continuing...`, 'error');
             }

@@ -16,7 +16,7 @@
   ============================================================ -->
   <div class="modal-overlay" id="settingsModal">
     <div class="modal-box">
-      <button class="btn-settings-close" onclick="closeSettings()">&#x2715;</button>
+      <button id="autoGenId_1" class="btn-settings-close">&#x2715;</button>
       <h3>⚙️ Connection Settings</h3>
       <div class="settings-row">
         <label>ComfyUI API Address</label>
@@ -33,7 +33,7 @@
         <input type="text" id="settingOutputPath" placeholder="/Users/yourname/.ComfyUI/output">
         <div class="settings-hint">Shown in the header for reference only</div>
       </div>
-      <button class="btn-settings-save" onclick="saveSettings()">Save &amp; Apply</button>
+      <button id="autoGenId_2" class="btn-settings-save">Save &amp; Apply</button>
     </div>
   </div>
 
@@ -50,18 +50,18 @@
           title="Click 📋 to copy path, then open Finder (Shift+⌘+G) and paste">
           📂 <span id="outputFolderPath"
             style="font-family:'SF Mono',monospace; font-size:10px;">/Users/manojsamal/.ComfyUI/output</span>
-          <button onclick="copyOutputPath()"
+          <button id="autoGenId_3"
             style="background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;color:inherit;"
             title="Copy path">
             <span id="copyOutputLabel">📋 Copy</span>
           </button>
         </span>
-        <button onclick="openSettings()"
+        <button id="autoGenId_4"
           style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--text-muted); cursor:pointer;">
           ⚙️ Settings
         </button>
         <!-- fix #28: theme toggle -->
-        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
           🌙
         </button>
       </div>
@@ -69,9 +69,9 @@
 
     <!-- ── TABS NAVIGATION ── -->
     <div class="tab-nav">
-      <button class="tab-btn active" id="btnTabImagegen" data-tab="imagegen" onclick="switchTab('imagegen')">🎨 Image
+      <button class="tab-btn active" id="btnTabImagegen" data-tab="imagegen">🎨 Image
         Gen<span class="tab-activity-dot"></span></button>
-      <button class="tab-btn" id="btnTabSpritegen" data-tab="spritegen" onclick="switchTab('spritegen')">🕹 Sprite
+      <button class="tab-btn" id="btnTabSpritegen" data-tab="spritegen">🕹 Sprite
         Sheet<span class="tab-activity-dot"></span></button>
     </div>
 
@@ -84,38 +84,37 @@
             style="color:var(--text-dim); font-weight:400; font-size:10px; text-transform:none; letter-spacing:0; margin-left:4px;">→
             tap to auto-configure model + keywords</span></div>
         <div class="style-grid" id="styleGrid">
-          <button class="style-chip" data-style="photorealistic" onclick="selectStyle(this)"><span
+          <button id="autoGenId_5" class="style-chip" data-style="photorealistic"><span
               class="style-icon">📸</span><span class="style-name">Photorealistic</span><span
               class="style-sub">Juggernaut XL</span></button>
-          <button class="style-chip" data-style="portrait" onclick="selectStyle(this)"><span
-              class="style-icon">🧑</span><span class="style-name">Portrait</span><span class="style-sub">Juggernaut
+          <button id="autoGenId_6" class="style-chip" data-style="portrait"><span class="style-icon">🧑</span><span
+              class="style-name">Portrait</span><span class="style-sub">Juggernaut
               XL</span></button>
-          <button class="style-chip" data-style="anime" onclick="selectStyle(this)"><span
-              class="style-icon">🌸</span><span class="style-name">Anime</span><span class="style-sub">Pony
+          <button id="autoGenId_7" class="style-chip" data-style="anime"><span class="style-icon">🌸</span><span
+              class="style-name">Anime</span><span class="style-sub">Pony
               Diffusion</span></button>
-          <button class="style-chip" data-style="pixel" onclick="selectStyle(this)"><span
-              class="style-icon">👾</span><span class="style-name">Pixel Art</span><span class="style-sub">FLUX +
+          <button id="autoGenId_8" class="style-chip" data-style="pixel"><span class="style-icon">👾</span><span
+              class="style-name">Pixel Art</span><span class="style-sub">FLUX +
               LoRA</span></button>
-          <button class="style-chip" data-style="cartoon" onclick="selectStyle(this)"><span
-              class="style-icon">🎨</span><span class="style-name">Cartoon</span><span class="style-sub">DreamShaper
+          <button id="autoGenId_9" class="style-chip" data-style="cartoon"><span class="style-icon">🎨</span><span
+              class="style-name">Cartoon</span><span class="style-sub">DreamShaper
               8</span></button>
-          <button class="style-chip" data-style="fantasy" onclick="selectStyle(this)"><span
-              class="style-icon">🏰</span><span class="style-name">Fantasy / RPG</span><span
-              class="style-sub">AnyLoRA</span></button>
-          <button class="style-chip" data-style="scifi" onclick="selectStyle(this)"><span
-              class="style-icon">🌆</span><span class="style-name">Sci-Fi</span><span class="style-sub">DreamShaper
+          <button id="autoGenId_10" class="style-chip" data-style="fantasy"><span class="style-icon">🏰</span><span
+              class="style-name">Fantasy / RPG</span><span class="style-sub">AnyLoRA</span></button>
+          <button id="autoGenId_11" class="style-chip" data-style="scifi"><span class="style-icon">🌆</span><span
+              class="style-name">Sci-Fi</span><span class="style-sub">DreamShaper
               Lightning</span></button>
-          <button class="style-chip" data-style="3d" onclick="selectStyle(this)"><span class="style-icon">🧊</span><span
+          <button id="autoGenId_12" class="style-chip" data-style="3d"><span class="style-icon">🧊</span><span
               class="style-name">3D Render</span><span class="style-sub">DreamShaper Lightning</span></button>
-          <button class="style-chip" data-style="nsfw" onclick="selectStyle(this)"><span
-              class="style-icon">🔞</span><span class="style-name">NSFW</span><span class="style-sub">Pony
+          <button id="autoGenId_13" class="style-chip" data-style="nsfw"><span class="style-icon">🔞</span><span
+              class="style-name">NSFW</span><span class="style-sub">Pony
               Diffusion</span></button>
         </div>
         <div id="styleKeywordsBar" style="margin-top:10px; display:none;">
           <span style="font-size:10px; color:var(--text-dim);">Injecting keywords:</span>
           <span id="styleKeywordsTags"
             style="font-size:11px; color:var(--accent); margin-left:6px; font-family:'SF Mono',monospace;"></span>
-          <button onclick="clearStyle()"
+          <button id="autoGenId_14"
             style="float:right; background:none; border:none; color:var(--text-dim); font-size:11px; cursor:pointer; text-decoration:underline;">✕
             Clear</button>
         </div>
@@ -130,19 +129,19 @@
                 <span style="font-weight:400; opacity:0.5;">(auto-selected by style)</span>
               </div>
               <div class="model-grid" id="modelGrid">
-                <button class="model-chip active" data-model="flux" data-type="gguf" onclick="selectModel(this)">FLUX
+                <button id="autoGenId_15" class="model-chip active" data-model="flux" data-type="gguf">FLUX
                   Schnell <span class="badge badge-flux">FLUX</span></button>
-                <button class="model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
-                  onclick="selectModel(this)">Juggernaut XL v9 <span class="badge badge-xl">XL</span></button>
-                <button class="model-chip" data-model="DreamShaperXL_Lightning.safetensors" data-type="sdxl_lightning"
-                  onclick="selectModel(this)">DreamShaper Lightning <span
+                <button id="autoGenId_16" class="model-chip" data-model="Juggernaut-XL_v9.safetensors"
+                  data-type="sdxl">Juggernaut XL v9 <span class="badge badge-xl">XL</span></button>
+                <button id="autoGenId_17" class="model-chip" data-model="DreamShaperXL_Lightning.safetensors"
+                  data-type="sdxl_lightning">DreamShaper Lightning <span
                     class="badge badge-speed">4-STEP</span></button>
-                <button class="model-chip" data-model="ponyDiffusionV6XL.safetensors" data-type="sdxl"
-                  onclick="selectModel(this)">Pony Diffusion V6 XL <span class="badge badge-xl">XL</span></button>
-                <button class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15"
-                  onclick="selectModel(this)">AnyLoRA <span class="badge badge-15">SD1.5</span></button>
-                <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
-                  onclick="selectModel(this)">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
+                <button id="autoGenId_18" class="model-chip" data-model="ponyDiffusionV6XL.safetensors"
+                  data-type="sdxl">Pony Diffusion V6 XL <span class="badge badge-xl">XL</span></button>
+                <button id="autoGenId_19" class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors"
+                  data-type="sd15">AnyLoRA <span class="badge badge-15">SD1.5</span></button>
+                <button id="autoGenId_20" class="model-chip" data-model="DreamShaper_8_pruned.safetensors"
+                  data-type="sd15">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
               </div>
 
               <!-- fix #23: LoRA support -->
@@ -160,8 +159,7 @@
               <div style="font-size:11px; color:var(--text-muted); font-weight:600; margin-bottom:6px;">Negative Prompt
               </div>
               <textarea id="negativeInput" rows="2"
-                placeholder="blurry, low quality, ugly, distorted face, extra fingers, watermark, nsfw"
-                oninput="updateNegCount()"></textarea>
+                placeholder="blurry, low quality, ugly, distorted face, extra fingers, watermark, nsfw"></textarea>
               <span class="char-count" id="negCount">0</span>
             </div>
 
@@ -178,18 +176,16 @@
             <div class="controls-grid" style="margin-bottom:14px;">
               <div class="control-item">
                 <label>Steps <span class="value-display" id="stepsVal">15</span>
-                  <span class="info-trigger" onclick="toggleInfo('stepsInfo')" title="What is this?">ⓘ</span></label>
-                <input type="range" id="stepsSlider" min="1" max="50" value="15"
-                  oninput="document.getElementById('stepsVal').textContent = this.value">
+                  <span id="autoGenId_21" class="info-trigger" title="What is this?">ⓘ</span></label>
+                <input type="range" id="stepsSlider" min="1" max="50" value="15">
                 <div class="info-tooltip" id="stepsInfo"><strong>Steps</strong> = denoising iterations.<br><br>• FLUX:
                   <strong>4–8</strong> &nbsp;• Lightning: <strong>6–10</strong><br>• SDXL/SD1.5: <strong>20–30</strong>
                 </div>
               </div>
               <div class="control-item">
                 <label>CFG Scale <span class="value-display" id="cfgVal">7.0</span>
-                  <span class="info-trigger" onclick="toggleInfo('cfgInfo')" title="What is this?">ⓘ</span></label>
-                <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7"
-                  oninput="document.getElementById('cfgVal').textContent = parseFloat(this.value).toFixed(1)">
+                  <span id="autoGenId_22" class="info-trigger" title="What is this?">ⓘ</span></label>
+                <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7">
                 <div class="info-tooltip" id="cfgInfo"><strong>CFG</strong> = prompt adherence.<br><br>• FLUX:
                   <strong>1.0</strong> &nbsp;• Lightning: <strong>2–3</strong><br>• SDXL: <strong>6–8</strong> &nbsp;•
                   SD1.5: <strong>7–9</strong>
@@ -201,8 +197,8 @@
               <label>🎲 Seed</label>
               <input type="number" id="seedInput" min="0" max="9999999999" value="" placeholder="Random"
                 title="Leave blank for a random seed">
-              <button class="icon-btn" onclick="randomizeSeed()" title="Randomize seed">🔀</button>
-              <button class="icon-btn" id="lockSeedBtn" onclick="lockSeed()" title="Lock last used seed">🔒</button>
+              <button id="autoGenId_23" class="icon-btn" title="Randomize seed">🔀</button>
+              <button class="icon-btn" id="lockSeedBtn" title="Lock last used seed">🔒</button>
             </div>
 
           </div><!-- /adv-body -->
@@ -213,19 +209,18 @@
       <div class="card prompt-card">
         <div class="card-label">Prompt</div>
         <textarea id="promptInput" rows="4"
-          placeholder="Describe your image… (e.g. A cybernetic dwarf engineer in a neon rain-soaked alleyway, cinematic lighting, hyperrealistic)"
-          oninput="updateCharCount()"></textarea>
+          placeholder="Describe your image… (e.g. A cybernetic dwarf engineer in a neon rain-soaked alleyway, cinematic lighting, hyperrealistic)"></textarea>
         <span class="char-count" id="charCount">0</span>
       </div>
 
       <!-- ── ACTION BUTTONS ── -->
       <!-- fix #18: prompt history panel -->
       <div class="history-panel" id="historyPanel" style="display:none;">
-        <div class="history-header" onclick="toggleHistoryPanel()">
+        <div id="autoGenId_24" class="history-header">
           <span>🕒 Prompt History</span>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="history-clear" onclick="event.stopPropagation();clearPromptHistory()"
-              title="Clear all history" aria-label="Clear prompt history">Clear</button>
+            <button id="autoGenId_25" class="history-clear" title="Clear all history"
+              aria-label="Clear prompt history">Clear</button>
             <span id="historyChevron">▼</span>
           </div>
         </div>
@@ -237,23 +232,24 @@
         <span
           style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Batch</span>
         <div style="display:flex; gap:4px;" id="batchPills">
-          <button class="batch-pill active" data-count="1" onclick="setBatchCount(1)"
-            aria-label="Generate 1 image">1</button>
-          <button class="batch-pill" data-count="2" onclick="setBatchCount(2)" aria-label="Generate 2 images">2</button>
-          <button class="batch-pill" data-count="3" onclick="setBatchCount(3)" aria-label="Generate 3 images">3</button>
-          <button class="batch-pill" data-count="4" onclick="setBatchCount(4)" aria-label="Generate 4 images">4</button>
+          <button id="autoGenId_26" class="batch-pill active" data-count="1" aria-label="Generate 1 image">1</button>
+          <button id="autoGenId_27" class="batch-pill" data-count="2" aria-label="Generate 2 images">2</button>
+          <button id="autoGenId_28" class="batch-pill" data-count="3" aria-label="Generate 3 images">3</button>
+          <button id="autoGenId_29" class="batch-pill" data-count="4" aria-label="Generate 4 images">4</button>
         </div>
       </div>
       <div class="action-row">
-        <button class="btn-generate" id="generateBtn" onclick="generateImage()" aria-label="Start image generation">✦
+        <button class="btn-generate" id="generateBtn" aria-label="Start image generation">✦
           Generate Image</button>
-        <button class="btn-download" id="downloadBtn" onclick="downloadImage()" title="Save image"
+        <button class="btn-cancel" id="cancelBtn" style="display:none;" aria-label="Cancel image generation">⛔
+          Cancel</button>
+        <button class="btn-download" id="downloadBtn" title="Save image"
           aria-label="Download generated image">⬇</button>
       </div>
 
 
       <!-- ── STATUS BAR ── -->
-      <div class="status-bar" id="statusBar">
+      <div class="status-bar" id="statusBar" aria-live="polite">
         <div class="status-dot"></div>
         <span id="statusText">Ready to generate</span>
         <span class="status-pct" id="statusPct">0%</span>
@@ -306,8 +302,8 @@
         <div class="recovery-msg" id="recoveryMsg">A previous sprite generation was interrupted. Resume to continue
           watching it.</div>
         <div class="recovery-actions">
-          <button id="btnResumeSession" onclick="resumeSession()">&#9654; Resume Session</button>
-          <button id="btnDismissSession" onclick="dismissSession()">&#x2715; Dismiss</button>
+          <button id="btnResumeSession">&#9654; Resume Session</button>
+          <button id="btnDismissSession">&#x2715; Dismiss</button>
         </div>
       </div>
 
@@ -322,27 +318,26 @@
         <div class="gap-sm">
           <label class="lbl">Frame Size</label>
           <div class="preset-btns">
-            <button class="preset-btn" onclick="setSpriteSize(16, this)">16×16</button>
-            <button class="preset-btn" onclick="setSpriteSize(32, this)">32×32</button>
-            <button class="preset-btn" onclick="setSpriteSize(48, this)">48×48</button>
-            <button class="preset-btn active" onclick="setSpriteSize(64, this)">64×64 (Default)</button>
-            <button class="preset-btn" onclick="setSpriteSize(128, this)">128×128 (HD)</button>
+            <button id="autoGenId_30" class="preset-btn">16×16</button>
+            <button id="autoGenId_31" class="preset-btn">32×32</button>
+            <button id="autoGenId_32" class="preset-btn">48×48</button>
+            <button id="autoGenId_33" class="preset-btn active">64×64 (Default)</button>
+            <button id="autoGenId_34" class="preset-btn">128×128 (HD)</button>
           </div>
         </div>
 
         <div class="flex-row gap-md">
-          <button class="btn-generate" id="btnGenRef" onclick="generateSpriteRef()"
-            style="flex:2; padding:10px 16px; font-size:13px;">✦ Generate Reference Frame</button>
+          <button class="btn-generate" id="btnGenRef" style="flex:2; padding:10px 16px; font-size:13px;">✦ Generate
+            Reference Frame</button>
 
-          <button class="btn-generate" id="btnUploadRef" onclick="document.getElementById('fileUploadRef').click()"
+          <button class="btn-generate" id="btnUploadRef"
             style="flex:1; padding:10px 16px; font-size:13px; background:var(--bg-card-hover); color:var(--text-primary); border:1px solid var(--border);">⬆️
             Upload Custom</button>
-          <input type="file" id="fileUploadRef" accept="image/png, image/jpeg" style="display:none;"
-            onchange="handleCustomUpload(event)" />
+          <input type="file" id="fileUploadRef" accept="image/png, image/jpeg" style="display:none;" />
         </div>
 
         <!-- ── SPRITE STATUS BAR ── -->
-        <div class="status-bar" id="spriteStatusBar" style="margin-top:16px; display:none;">
+        <div class="status-bar" id="spriteStatusBar" style="margin-top:16px; display:none;" aria-live="polite">
           <div class="status-dot"></div>
           <span id="spriteStatusText">Ready to generate</span>
           <span class="status-pct" id="spriteStatusPct">0%</span>
@@ -367,7 +362,7 @@
         <img id="spriteRefImg" style="display:none; max-width:200px; object-fit:contain; image-rendering:pixelated;" />
       </div>
 
-      <button id="btnApproveRef" class="btn-approve" disabled onclick="approveReference()">Approve &amp; Continue
+      <button id="btnApproveRef" class="btn-approve" disabled>Approve &amp; Continue
         →</button>
 
       <!-- ── STAGE 2: ANIMATION CONFIG ── -->
@@ -393,16 +388,15 @@
                 <span style="font-weight:400; opacity:0.5;">(AnyLoRA recommended for sprites)</span>
               </div>
               <div class="sprite-model-grid" id="spriteModelGrid">
-                <button class="sprite-model-chip active" data-model="AnyLoRA_noVae_fp16-pruned.safetensors"
-                  data-type="sd15" onclick="selectSpriteModel(this)">AnyLoRA <span
+                <button id="autoGenId_35" class="sprite-model-chip active"
+                  data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15">AnyLoRA <span
                     class="badge badge-15">SD1.5</span></button>
-                <button class="sprite-model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
-                  onclick="selectSpriteModel(this)">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
-                <button class="sprite-model-chip" data-model="DreamShaperXL_Lightning.safetensors"
-                  data-type="sdxl_lightning" onclick="selectSpriteModel(this)">DreamShaper ⚡ <span
-                    class="badge badge-speed">4-STEP</span></button>
-                <button class="sprite-model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
-                  onclick="selectSpriteModel(this)">Juggernaut XL <span class="badge badge-xl">XL</span></button>
+                <button id="autoGenId_36" class="sprite-model-chip" data-model="DreamShaper_8_pruned.safetensors"
+                  data-type="sd15">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
+                <button id="autoGenId_37" class="sprite-model-chip" data-model="DreamShaperXL_Lightning.safetensors"
+                  data-type="sdxl_lightning">DreamShaper ⚡ <span class="badge badge-speed">4-STEP</span></button>
+                <button id="autoGenId_38" class="sprite-model-chip" data-model="Juggernaut-XL_v9.safetensors"
+                  data-type="sdxl">Juggernaut XL <span class="badge badge-xl">XL</span></button>
               </div>
             </div>
 
@@ -415,15 +409,13 @@
               <!-- Frame Count -->
               <div class="control-item">
                 <label>Smoothness (Frames) <span class="value-display" id="frameCountVal">8</span></label>
-                <input type="range" id="frameCountSlider" min="2" max="16" step="1" value="8"
-                  oninput="document.getElementById('frameCountVal').innerText=this.value">
+                <input type="range" id="frameCountSlider" min="2" max="16" step="1" value="8">
               </div>
               <!-- Denoising Strength -->
               <div class="control-item">
                 <label>Denoising Strength (Change per frame) <span class="value-display"
                     id="denoiseVal">0.55</span></label>
-                <input type="range" id="denoiseSlider" min="0.1" max="0.8" step="0.05" value="0.55"
-                  oninput="document.getElementById('denoiseVal').innerText=this.value">
+                <input type="range" id="denoiseSlider" min="0.1" max="0.8" step="0.05" value="0.55">
                 <div style="font-size:10px; color:var(--text-dim); margin-top:4px;">Low = frames stay close to
                   reference. High = more movement per frame. <strong style="color:var(--warning);">Each frame chains off
                     the previous, so even 0.4 accumulates significantly.</strong></div>
@@ -435,9 +427,9 @@
 
         <!-- Action buttons: Start + Cancel -->
         <div style="display:flex; gap:8px; margin-top:16px;">
-          <button class="btn-generate" id="btnStartAnim" onclick="startAnimationQueue()" disabled style="flex:2;">✦
+          <button class="btn-generate" id="btnStartAnim" disabled style="flex:2;">✦
             Start Sequential Generation</button>
-          <button class="btn-cancel" id="btnCancelAnim" onclick="cancelAnimationQueue()" style="display:none;">⛔
+          <button class="btn-cancel" id="btnCancelAnim" style="display:none;">⛔
             Cancel</button>
         </div>
       </div>
@@ -478,34 +470,33 @@
             <select id="reorderAnimSelect"
               style="flex:1; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; color:var(--text-primary);">
             </select>
-            <button class="btn-download" onclick="applyFrameReorder()" style="font-size:12px; padding:6px 14px;">✓ Apply
+            <button id="autoGenId_39" class="btn-download" style="font-size:12px; padding:6px 14px;">✓ Apply
               Order</button>
-            <button class="btn-download" onclick="hideFrameReorder()"
+            <button id="autoGenId_40" class="btn-download"
               style="font-size:12px; padding:6px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-muted);">Cancel</button>
           </div>
         </div>
 
         <div class="action-row" style="margin-top:16px; margin-bottom:0; display:flex; gap:8px;">
-          <button class="btn-download" id="downloadSheetBtn" onclick="downloadSpriteSheet()"
-            aria-label="Download full sprite sheet as PNG" style="flex:1; display:none;">⬇ Download Full Sheet
+          <button class="btn-download" id="downloadSheetBtn" aria-label="Download full sprite sheet as PNG"
+            style="flex:1; display:none;">⬇ Download Full Sheet
             (PNG)</button>
-          <button class="btn-download" id="downloadZipBtn" onclick="downloadFramesZip()"
-            aria-label="Download individual frames as ZIP" style="flex:1; display:none; background:var(--accent-2);">⬇
+          <button class="btn-download" id="downloadZipBtn" aria-label="Download individual frames as ZIP"
+            style="flex:1; display:none; background:var(--accent-2);">⬇
             Download Individual Frames (ZIP)</button>
           <!-- Reorder strip toggle button -->
-          <button class="btn-download" id="btnReorderFrames" onclick="showFrameReorder()"
+          <button class="btn-download" id="btnReorderFrames"
             style="flex:1; display:none; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px;"
             aria-label="Reorder frames by dragging">↕ Reorder Frames</button>
           <!-- fix #21: session export/import for backup & portability -->
-          <button class="btn-download" id="exportSessionBtn" onclick="exportSessionJSON()"
-            aria-label="Export current session config as JSON"
+          <button class="btn-download" id="exportSessionBtn" aria-label="Export current session config as JSON"
             style="flex:1; display:none; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px;">📤
             Export Session JSON</button>
           <label class="btn-download"
             style="flex:1; display:none; cursor:pointer; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px; text-align:center;"
             id="importSessionLabel">
             📥 Import Session JSON
-            <input type="file" accept=".json" onchange="importSessionJSON(event)" style="display:none;">
+            <input id="autoGenId_41" type="file" accept=".json" style="display:none;">
           </label>
         </div>
       </div>
@@ -517,7 +508,7 @@
   <div id="cellPreviewModal"
     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
     <div class="card" style="width: 440px; text-align:center; position:relative;">
-      <button onclick="closeCellPreview()"
+      <button id="autoGenId_42"
         style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:white; font-size:20px; cursor:pointer;">×</button>
       <div class="card-label" id="previewModalLabel">Frame Preview</div>
 
@@ -531,7 +522,7 @@
       <div id="fpsControlRow" style="display:none; margin-bottom:12px; font-size:12px; color:var(--text-muted);">
         <label>Speed: <span id="fpsLabel">6.6</span> fps &nbsp;
           <input type="range" id="fpsSlider" min="2" max="24" step="1" value="7"
-            style="vertical-align:middle; width:100px;" oninput="updatePreviewFps(this.value)">
+            style="vertical-align:middle; width:100px;">
         </label>
       </div>
 
@@ -542,16 +533,16 @@
 
       <div style="display:flex; flex-direction:column; gap:8px;">
         <!-- Retry (single frame mode only) -->
-        <button class="btn-generate" id="btnRetryCell" onclick="retryActiveCell()"
-          style="width:100%; background:var(--warning); color:#000;">⚠️ Retry This Frame</button>
+        <button class="btn-generate" id="btnRetryCell" style="width:100%; background:var(--warning); color:#000;">⚠️
+          Retry This Frame</button>
 
         <!-- Copy to clipboard (single frame mode) -->
-        <button class="btn-download" id="btnCopyFrame" onclick="copyFrameToClipboard()"
+        <button class="btn-download" id="btnCopyFrame"
           style="width:100%; display:none; background:rgba(255,255,255,0.08); border:1px solid var(--border);">📋 Copy
           Frame to Clipboard</button>
 
         <!-- GIF export (animation loop mode only) -->
-        <button class="btn-download" id="btnDownloadGif" onclick="exportActiveAnimationGif()"
+        <button class="btn-download" id="btnDownloadGif"
           style="display:none; width:100%; background:var(--success); color:#000; font-weight:bold;">⬇ Export as
           Animated GIF</button>
       </div>

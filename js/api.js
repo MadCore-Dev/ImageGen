@@ -2,7 +2,7 @@ import {
     COMFY_API_LIVE, CLIENT_ID, socket, wsRetries, WS_MAX_RETRIES,
     setSocket, setWsRetries
 } from './config.js';
-import { setProgress, setSpriteStatus, setStatus } from './app.js';
+import { setProgress, setSpriteStatus, setStatus } from './ui.js';
 
 // ============================================================
 //  COMFYUI CONNECTION STATUS & WEBSOCKET

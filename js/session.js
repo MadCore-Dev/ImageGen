@@ -7,7 +7,7 @@ import {
     currentAnimationGrid, setCurrentAnimationGrid
 } from './config.js';
 import { initWebSocket, pollHistory, uploadImageToComfy } from './api.js';
-import { setSpriteStatus, showSpriteProgress } from './app.js';
+import { setSpriteStatus, showSpriteProgress } from './ui.js';
 import { playAnimationLoop, retryAnimationRow } from './canvas.js';
 
 // ============================================================

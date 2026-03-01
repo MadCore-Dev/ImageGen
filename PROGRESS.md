@@ -208,3 +208,45 @@
 - Restored missing UI functions from the original monolith split (e.g., `openSettings`, `applyTheme`).
 - Mounted necessary functions to the `window` object in `app.js` to preserve the existing `onclick=""` inline bindings in the HTML, striking a balance between module encapsulation and avoiding a full DOM rewrite.
 
+
+---
+
+## Chunk 7 — P1 Architecture: Circular Dep Fix + Unobtrusive JS ⚡
+**Date:** 2026-03-01 21:33 IST | **Status:** ✅ COMPLETE
+
+**#43 — Created `js/ui.js` (Circular Dependency Fix)**
+- Extracted UI functions (`setStatus`, `setSpriteStatus`, `setProgress`, `showProgress`, `showSpriteProgress`, `setTabActivity`, `switchTab`) from `app.js` into `ui.js`.
+- Modules (`api.js`, `canvas.js`, `sprite_engine.js`, `session.js`) now import from `./ui.js` instead of `./app.js`, eliminating circular imports.
+
+**#44 — Removed `window.*` Bindings — Full Unobtrusive JS**
+- Stripped all 42 inline `onclick`/`oninput`/`onchange` attributes from `index.html`.
+- Removed the entire `window.functionName = ...` block from `app.js`.
+- Implemented `initEventListeners()` that attaches all handlers via `addEventListener` at startup.
+
+---
+
+## Chunk 8 — P2 Feature Parity & UX Gaps ⚡
+**Date:** 2026-03-01 21:33 IST | **Status:** ✅ COMPLETE
+
+**#45 — Tab 1 Cancel Button + Full AbortController Wiring**
+- Added `⛔ Cancel` button in Tab 1 action row (hidden initially, shown during generation).
+- `_tab1AbortController` created per-generation, `signal` threaded into Traffic Cop fetch, ComfyUI queue fetch, and `pollHistory()`.
+- Batch loop breaks cleanly on abort. `AbortError` displays `🚫 Generation cancelled.`.
+
+**#46 — Sprite Cancel: Proper AbortError Handling**
+- Added `if (err.name === 'AbortError' || cancelGenerationFlag) { break; }` at top of sprite frame catch block.
+- No more spurious ❌ error flashes when the user cancels a sprite run.
+
+**#47 — Cache-Buster on Tab 1 Images**
+- `imgEl.src` now appends `&t=${Date.now()}` so ComfyUI images are always freshly fetched.
+
+---
+
+## Chunk 9 — P3 Code Polish ⚡
+**Date:** 2026-03-01 21:33 IST | **Status:** ✅ COMPLETE
+
+**#48 — Removed Misleading `async` from `exportActiveAnimationGif`**
+- GIF export uses callback pattern (not `await`). `async` keyword removed.
+
+**#49 — Accessibility: `aria-live="polite"` on Status Bars**
+- Added to `#statusBar` and `#spriteStatusBar` so screen readers announce generation progress.
