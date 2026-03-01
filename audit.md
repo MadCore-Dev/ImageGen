@@ -310,9 +310,9 @@ The `buildWorkflow()` function produces 8-node inline JS objects manually. This 
 | 20 | Only call `initWebSocket()` after successful Traffic Cop response | 🟢 P3 | 20min | ✅ Done |
 | 21 | Session export/import as JSON | 🟢 P3 | 2hr | ✅ Done |
 | 22 | Descriptive filenames for sprite sheet + ZIP exports | 🟢 P3 | 15min | ✅ Done |
-| 23 | LoRA support in GGUF workflow | 🟢 P3 | 2hr | ⏳ Future |
-| 29 | Drag-and-drop frame reordering in preview modal | 🟢 P3 | 3hr | ⏳ Future |
-| 30 | CSS skeleton loaders + cycling tips during generation | 🟢 P3 | 2hr | ⏳ Future |
+| 23 | LoRA support in GGUF workflow | 🟢 P3 | 2hr | ✅ Done |
+| 29 | Drag-and-drop frame reordering in preview modal | 🟢 P3 | 3hr | ✅ Done |
+| 30 | CSS skeleton loaders + cycling tips during generation | 🟢 P3 | 2hr | ✅ Done |
 | 31 | ComfyUI `/input` folder cleanup after generation (disk bloat) | 🟠 P1 | 2hr | ✅ Done |
 | 32 | Revoke `URL.createObjectURL` blobs after use (memory leak) | 🟠 P1 | 20min | ✅ Done |
 | 33 | `pollHistory` infinite loop trap on ComfyUI node errors | 🟡 P2 | 30min | ✅ Done |
