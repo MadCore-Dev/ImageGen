@@ -9,6 +9,7 @@ import { buildAnimateDiffWorkflow } from './workflows.js';
 import {
     setVideoStatus, showVideoProgress, setVideoProgress, setTabActivity
 } from './ui.js';
+import { saveTabState } from './session.js';
 
 // ============================================================
 //  TAB 3 — ANIMATEDIFF VIDEO ENGINE
@@ -104,6 +105,7 @@ export async function startVideoGen() {
         });
         if (!res.ok) throw new Error(`ComfyUI error (${res.status}): ${await res.text()}`);
         const data = await res.json();
+        saveTabState('tab3', { activePromptId: data.prompt_id });
 
         // 4. Poll for result (VHS outputs a gif, so filename ends in .gif)
         setVideoStatus('⏳ Generating frames… this may take a minute…', 'active');
@@ -128,6 +130,7 @@ export async function startVideoGen() {
         }
 
         setVideoStatus('✨ Animation complete!', 'success');
+        saveTabState('tab3', { activePromptId: null });
 
     } catch (err) {
         if (err.name === 'AbortError' || _videoCancelFlag) {
@@ -136,12 +139,70 @@ export async function startVideoGen() {
             setVideoStatus(`❌ ${err.message}`, 'error');
             console.error('[video_engine] startVideoGen error:', err);
         }
+        saveTabState('tab3', { activePromptId: null });
     } finally {
         showVideoProgress(false);
         btn.disabled = false;
         btn.textContent = '▶ Generate Animation';
         cancelBtn.style.display = 'none';
-        _videoCancelFlag = false;
+        setTabActivity('videogen', false);
+    }
+}
+
+export async function resumeVideoGen(prompt_id) {
+    _videoAbortController = new AbortController();
+    _videoCancelFlag = false;
+    const signal = _videoAbortController.signal;
+
+    const btn = document.getElementById('btnStartVideo');
+    const cancelBtn = document.getElementById('btnCancelVideo');
+    btn.disabled = true;
+    btn.textContent = '⏳ Reconnecting…';
+    cancelBtn.style.display = 'block';
+    cancelBtn.disabled = false;
+
+    setVideoStatus('🚦 Reconnecting to active generation…', 'active');
+    showVideoProgress(true);
+    setTabActivity('videogen', true);
+
+    try {
+        import('./api.js').then(({ initWebSocket }) => initWebSocket());
+
+        setVideoStatus('⏳ Generating frames… this may take a minute…', 'active');
+        const filename = await pollHistory(prompt_id, signal);
+
+        const gifUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        const resultImg = document.getElementById('videoResult');
+        resultImg.src = gifUrl;
+        resultImg.style.display = 'block';
+
+        const dlBtn = document.getElementById('btnDownloadVideo'); // Need definition?
+        if (dlBtn) {
+            dlBtn.style.display = 'inline-flex';
+            dlBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = gifUrl;
+                a.download = `animatediff_${Date.now()}.gif`;
+                a.click();
+            };
+        }
+
+        setVideoStatus('✨ Animation complete!', 'success');
+        saveTabState('tab3', { activePromptId: null });
+
+    } catch (err) {
+        if (err.name === 'AbortError' || _videoCancelFlag) {
+            setVideoStatus('⛔ Reconnect cancelled.', 'error');
+        } else {
+            setVideoStatus(`❌ ${err.message}`, 'error');
+            console.error('[video_engine] resumeVideoGen error:', err);
+        }
+        saveTabState('tab3', { activePromptId: null });
+    } finally {
+        showVideoProgress(false);
+        btn.disabled = false;
+        btn.textContent = '✦ Start Sequential Generation';
+        cancelBtn.style.display = 'none';
         setTabActivity('videogen', false);
     }
 }

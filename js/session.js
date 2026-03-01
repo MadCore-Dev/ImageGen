@@ -16,6 +16,78 @@ import { playAnimationLoop, retryAnimationRow } from './canvas.js';
 const SESSION_KEY = 'epoch_sprite_session';
 const SESSION_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4 hours
 
+// --- GENERIC TAB STATE PERSISTENCE ---
+export function saveTabState(tabId, updates) {
+    try {
+        const key = `epoch_${tabId}_session`;
+        const existing = loadTabState(tabId, false) || { timestamp: Date.now() };
+        const merged = Object.assign(existing, updates, { timestamp: Date.now() });
+        localStorage.setItem(key, JSON.stringify(merged));
+    } catch (e) { console.warn(`Tab ${tabId} session save failed:`, e); }
+}
+
+export function loadTabState(tabId, checkAge = true) {
+    try {
+        const key = `epoch_${tabId}_session`;
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const s = JSON.parse(raw);
+        if (checkAge && Date.now() - s.timestamp > SESSION_MAX_AGE_MS) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        return s;
+    } catch (e) { return null; }
+}
+
+export function clearTabState(tabId) {
+    localStorage.removeItem(`epoch_${tabId}_session`);
+}
+
+function bindTabInputs(tabId, elementIds) {
+    const s = loadTabState(tabId, false) || {};
+    elementIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (s[id] !== undefined) {
+            el.value = s[id];
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        el.addEventListener('change', () => {
+            saveTabState(tabId, { [id]: el.value });
+        });
+        el.addEventListener('keyup', () => {
+            saveTabState(tabId, { [id]: el.value });
+        });
+    });
+}
+
+export function initUniversalSessionRecovery() {
+    // 1. Text/Slider input recovery
+    bindTabInputs('tab1', ['promptInput', 'negativeInput', 'stepsSlider', 'cfgSlider', 'seedInput']);
+    bindTabInputs('tab2', ['spritePrompt', 'frameCountSlider', 'denoiseSlider', 'loraInput']);
+    bindTabInputs('tab3', ['videoPrompt', 'videoNegPrompt', 'videoFrameSlider', 'videoFpsSlider']);
+
+    // 2. Tab 1 Active Gen Recovery
+    const t1 = loadTabState('tab1');
+    if (t1 && t1.activePromptId) {
+        import('./app.js').then(app => {
+            if (app.resumeTab1Generation) app.resumeTab1Generation(t1.activePromptId);
+        });
+    }
+
+    // 3. Tab 3 Active Gen Recovery
+    const t3 = loadTabState('tab3');
+    if (t3 && t3.activePromptId) {
+        import('./video_engine.js').then(v => {
+            if (v.resumeVideoGen) v.resumeVideoGen(t3.activePromptId);
+        });
+    }
+}
+
+// --- LEGACY TAB 2 (SPRITE) STATE PERSISTENCE ---
 export function saveSession(updates) {
     try {
         const existing = loadSession(false) || { version: 1, timestamp: Date.now(), completedFrames: {} };
@@ -72,9 +144,25 @@ export async function resumeSession() {
     document.getElementById('recoveryBanner').style.display = 'none';
     document.getElementById('btnResumeSession').disabled = true;
 
-    // --- 1. Restore global config state ---
+    // --- 1. Restore global config state and UI inputs ---
     setCurrentAnimationGrid(s.selectedAnimations || []);
     setActiveSpriteSize(s.spriteSize || 64);
+
+    // Check checkboxes visually
+    document.querySelectorAll('.anim-checkbox').forEach(cb => {
+        cb.checked = (s.selectedAnimations || []).includes(cb.value);
+    });
+
+    // Restore baseRefImg visually if it exists
+    if (s.baseRefUploadName) {
+        const fileUrl = `http://${COMFY_API_LIVE}/view?filename=${s.baseRefUploadName}&type=input&t=${Date.now()}`;
+        const refImgEl = document.getElementById('spriteRefImg');
+        refImgEl.src = fileUrl;
+        refImgEl.style.display = 'block';
+        document.getElementById('spriteEmpty').style.display = 'none';
+        document.getElementById('btnApproveRef').disabled = false;
+        document.getElementById('stage2Config').style.display = 'block';
+    }
 
     // --- 2. Restore canvas from snapshot ---
     const canvas = document.getElementById('spriteCanvas');

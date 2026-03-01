@@ -18,7 +18,7 @@ import {
 } from './ui.js';
 import { checkComfyStatus, initWebSocket, pollHistory } from './api.js';
 import { buildWorkflow } from './workflows.js';
-import { checkForRecovery } from './session.js';
+import { checkForRecovery, saveTabState, initUniversalSessionRecovery } from './session.js';
 import { initCanvasEventListeners } from './canvas.js';
 import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue } from './sprite_engine.js';
 import { startVideoGen, cancelVideoGen, selectVideoModel } from './video_engine.js';
@@ -42,6 +42,74 @@ function downloadImage() {
     document.body.removeChild(a);
 }
 
+// --- Tab 1 Auto-Resume ---
+export async function resumeTab1Generation(prompt_id) {
+    const btn = document.getElementById('generateBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Reconnecting…';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    setTabActivity('imagegen', true);
+
+    document.getElementById('resultImage').style.display = 'none';
+    document.getElementById('result-container').classList.remove('has-image');
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('downloadBtn').classList.remove('visible');
+    document.getElementById('imageMeta').classList.remove('visible');
+    document.getElementById('loaderWrap').classList.add('visible');
+    document.getElementById('loaderLabel').textContent = 'Reattaching to active generation...';
+    showProgress(true);
+    setStatus('🚦 Reconnecting to Traffic Cop / ComfyUI…', 'active');
+
+    _tab1AbortController = new AbortController();
+    _cancelFlag = false;
+
+    try {
+        initWebSocket();
+
+        const filename = await pollHistory(prompt_id, _tab1AbortController.signal);
+        lastFilename = filename;
+
+        setStatus('✅ Image ready!', 'success');
+        document.getElementById('loaderLabel').textContent = 'Fetching image…';
+
+        const imgEl = document.getElementById('resultImage');
+        imgEl.onload = () => {
+            document.getElementById('loaderWrap').classList.remove('visible');
+            imgEl.style.display = 'block';
+            document.getElementById('result-container').classList.add('has-image');
+            document.getElementById('emptyState').style.display = 'none';
+            showProgress(false);
+            document.getElementById('downloadBtn').classList.add('visible');
+            updateImageMeta(); // Added this line to match _originalGenerateImage
+            savePromptHistory(document.getElementById('promptInput').value.trim(), imgEl.src);
+        };
+        imgEl.onerror = () => {
+            setStatus('❌ Image loaded but could not be displayed.', 'error');
+            document.getElementById('loaderWrap').classList.remove('visible');
+        };
+        imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        saveTabState('tab1', { activePromptId: null });
+
+    } catch (err) {
+        if (err.name === 'AbortError' || _cancelFlag) {
+            setStatus('🚫 Reconnect cancelled.', 'error');
+        } else {
+            console.error(err);
+            setStatus(`❌ ${err.message}`, 'error');
+        }
+        document.getElementById('loaderWrap').classList.remove('visible');
+        document.getElementById('emptyState').style.display = '';
+        showProgress(false);
+        saveTabState('tab1', { activePromptId: null });
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '✦ Generate Image';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        setTabActivity('imagegen', false);
+    }
+}
+
 // --- Batch Config ---
 let _batchCount = 1;
 function setBatchCount(n) {
@@ -62,6 +130,7 @@ function downloadBatchImage(src, idx) {
 
 // --- Core Generation Orchestration ---
 let _tab1AbortController = null;
+let _cancelFlag = false; // Added this line
 
 /** Syncs bottom nav active state with the given tab ID */
 function syncBottomNav(tabId) {
@@ -144,6 +213,7 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
         }
         const { prompt_id } = await queueRes.json();
         setStatus(`⏳ In queue (${prompt_id.slice(0, 8)})… Node progress shown in bar above`, 'active');
+        saveTabState('tab1', { activePromptId: prompt_id });
 
         const filename = await pollHistory(prompt_id, signal);
         lastFilename = filename;
@@ -167,6 +237,7 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
             document.getElementById('loaderWrap').classList.remove('visible');
         };
         imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        saveTabState('tab1', { activePromptId: null });
 
     } catch (err) {
         if (err.name === 'AbortError') {
@@ -178,6 +249,7 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
         document.getElementById('loaderWrap').classList.remove('visible');
         document.getElementById('emptyState').style.display = '';
         showProgress(false);
+        saveTabState('tab1', { activePromptId: null });
     } finally {
         const cancelBtn = document.getElementById('cancelBtn');
         if (cancelBtn && !isBatchRun) cancelBtn.style.display = 'none';
@@ -387,6 +459,7 @@ function initApp() {
     updateResolutionPresets('gguf');
     initCanvasEventListeners();
     checkForRecovery();
+    initUniversalSessionRecovery();
 
     const initialChip = document.querySelector('.model-chip.active');
     if (initialChip) { selectModel(initialChip); }
