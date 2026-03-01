@@ -184,11 +184,11 @@ Tab 1 and Tab 2 are separate `<div>` sections toggled by JS. Shared ComfyUI API 
 - [x] Create Stage 1 UI (reference character prompt, size selector 16–128px, generate button)
 - [x] Wire Stage 1 to existing ComfyUI txt2img workflow with pixel art style
 
-### 📋 Phase 2 — Animation Configurator
-- [ ] Animation preset picker (Idle, Walk, Run, Attack, Jump, Hurt, Death, Cast)
-- [ ] Frame count slider per preset
-- [ ] Denoising strength slider
-- [ ] "Start Generation" button that builds the frame queue
+### 📋 Phase 2 — Animation Configurator (DONE)
+- [x] Animation preset picker (Idle, Walk, Run, Attack, Jump, Hurt, Death, Cast)
+- [x] Frame count slider per preset
+- [x] Denoising strength slider
+- [x] "Start Generation" button that builds the frame queue
 
 ### 📋 Phase 3 — Sequential Frame Engine
 - [ ] Frame queue executor (single frame at a time, sequential, not parallel)
