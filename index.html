@@ -786,6 +786,42 @@
     }
 
     /* ============================================================
+       PIXEL INPUT (pose override fields in sprite tab)
+    ============================================================ */
+    .pixel-input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+
+    .pixel-input:focus {
+      border-color: var(--border-focus);
+    }
+
+    /* Cancel button (secondary action) */
+    .btn-cancel {
+      flex: 1;
+      padding: 12px 20px;
+      border: 1px solid var(--error);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--error);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-cancel:hover {
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    /* ============================================================
        RESPONSIVE
     ============================================================ */
     @media (max-width: 600px) {
@@ -1147,17 +1183,25 @@
           <div class="control-item">
             <label>
               Denoising Strength (Change per frame)
-              <span class="value-display" id="denoiseVal">0.35</span>
+              <span class="value-display" id="denoiseVal">0.55</span>
             </label>
-            <input type="range" id="denoiseSlider" min="0.1" max="0.8" step="0.05" value="0.35"
+            <input type="range" id="denoiseSlider" min="0.1" max="0.8" step="0.05" value="0.55"
               oninput="document.getElementById('denoiseVal').innerText=this.value">
-            <div style="font-size:10px; color:var(--text-dim); margin-top:4px;">Low = strict to reference. High = more
-              creative variation.</div>
+            <div style="font-size:10px; color:var(--text-dim); margin-top:4px;">Low = frames stay very close to
+              reference. High = more variation per frame.
+              <strong style="color:var(--warning);"> Since each frame chains off the previous, even 0.4 accumulates
+                significantly over 8 frames.</strong>
+            </div>
           </div>
         </div>
 
-        <button class="btn-generate" id="btnStartAnim" onclick="startAnimationQueue()" disabled
-          style="margin-top:16px; width:100%;">✦ Start Sequential Generation</button>
+        <!-- Action buttons: Start + Cancel -->
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button class="btn-generate" id="btnStartAnim" onclick="startAnimationQueue()" disabled style="flex:2;">✦
+            Start Sequential Generation</button>
+          <button class="btn-cancel" id="btnCancelAnim" onclick="cancelAnimationQueue()" style="display:none;">⛔
+            Cancel</button>
+        </div>
       </div>
 
       <!-- ── STAGE 3 & 4: TIMELINE & RESULT CANVAS ── -->
@@ -1192,22 +1236,45 @@
     <!-- Per-cell Preview Modal -->
     <div id="cellPreviewModal"
       style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
-      <div class="card" style="width: 400px; text-align:center; position:relative;">
+      <div class="card" style="width: 440px; text-align:center; position:relative;">
         <button onclick="closeCellPreview()"
           style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:white; font-size:20px; cursor:pointer;">×</button>
         <div class="card-label" id="previewModalLabel">Frame Preview</div>
+
+        <!-- Canvas display -->
         <div
-          style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; display:inline-block; margin-bottom:16px;">
+          style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; display:inline-block; margin-bottom:12px;">
           <canvas id="cellPreviewCanvas" style="image-rendering:pixelated; width:200px; height:200px;"></canvas>
         </div>
-        <div style="font-size:12px; color:var(--text-dim); margin-bottom:16px;">
-          Retrying will completely replace this single frame on the grid.
+
+        <!-- FPS slider (only visible in animation loop mode) -->
+        <div id="fpsControlRow" style="display:none; margin-bottom:12px; font-size:12px; color:var(--text-muted);">
+          <label>Speed: <span id="fpsLabel">6.6</span> fps &nbsp;
+            <input type="range" id="fpsSlider" min="2" max="24" step="1" value="7"
+              style="vertical-align:middle; width:100px;" oninput="updatePreviewFps(this.value)">
+          </label>
         </div>
-        <button class="btn-generate" id="btnRetryCell" onclick="retryActiveCell()"
-          style="width:100%; background:var(--warning); color:#000;">⚠️ Retry This Frame</button>
-        <button class="btn-download" id="btnDownloadGif" onclick="exportActiveAnimationGif()"
-          style="display:none; width:100%; margin-top:8px; background:var(--success); color:#000; font-weight:bold;">⬇
-          Export as Animated GIF</button>
+
+        <!-- Single-frame actions -->
+        <div id="modalRetryText" style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">
+          Click ⚠️ Retry to regenerate this frame, or 📋 Copy to grab it.
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Retry (single frame mode only) -->
+          <button class="btn-generate" id="btnRetryCell" onclick="retryActiveCell()"
+            style="width:100%; background:var(--warning); color:#000;">⚠️ Retry This Frame</button>
+
+          <!-- Copy to clipboard (single frame mode) -->
+          <button class="btn-download" id="btnCopyFrame" onclick="copyFrameToClipboard()"
+            style="width:100%; display:none; background:rgba(255,255,255,0.08); border:1px solid var(--border);">📋 Copy
+            Frame to Clipboard</button>
+
+          <!-- GIF export (animation loop mode only) -->
+          <button class="btn-download" id="btnDownloadGif" onclick="exportActiveAnimationGif()"
+            style="display:none; width:100%; background:var(--success); color:#000; font-weight:bold;">⬇ Export as
+            Animated GIF</button>
+        </div>
       </div>
     </div>
 
@@ -2013,14 +2080,98 @@
       }
     }
     const ANIMATION_PRESETS = [
-      { id: 'idle', name: 'Idle', defaultFrames: 4, pose: 'standing still, subtle breathing' },
-      { id: 'walk', name: 'Walk', defaultFrames: 8, pose: 'walking side view, dynamic stride' },
-      { id: 'run', name: 'Run', defaultFrames: 6, pose: 'running fast, leaning forward' },
-      { id: 'attack', name: 'Attack', defaultFrames: 6, pose: 'swinging weapon, offensive strike' },
-      { id: 'jump', name: 'Jump', defaultFrames: 5, pose: 'jumping in air, dynamic pose' },
-      { id: 'hurt', name: 'Hurt', defaultFrames: 3, pose: 'taking damage, recoiling back' },
-      { id: 'death', name: 'Death', defaultFrames: 6, pose: 'falling down defeated, collapsing' },
-      { id: 'cast', name: 'Cast Magic', defaultFrames: 6, pose: 'casting spell, glowing hands raised' }
+      {
+        id: 'idle', name: 'Idle', defaultFrames: 4,
+        pose: 'standing still, subtle breathing',
+        keyframes: [
+          'standing still, breath in, chest slightly raised',
+          'standing, neutral relaxed pose',
+          'standing still, breath out, chest neutral',
+          'standing, eyes blinking, relaxed'
+        ]
+      },
+      {
+        id: 'walk', name: 'Walk', defaultFrames: 8,
+        pose: 'walking cycle, side view',
+        keyframes: [
+          'walking side view, right foot forward, left arm forward',
+          'walking side view, weight transferring, mid-stride',
+          'walking side view, left foot forward, right arm forward',
+          'walking side view, weight transferring, other mid-stride',
+          'walking side view, right foot forward again, leaning forward',
+          'walking side view, arms swinging back',
+          'walking side view, left leg extended back',
+          'walking side view, returning to start position'
+        ]
+      },
+      {
+        id: 'run', name: 'Run', defaultFrames: 6,
+        pose: 'running fast, side view',
+        keyframes: [
+          'running side view, right leg fully extended forward, leaning forward',
+          'running side view, both feet off ground, airborne sprint',
+          'running side view, left leg striking ground, arms pumping',
+          'running side view, right leg pushes off behind',
+          'running side view, body fully airborne again, fast pace',
+          'running side view, left leg extended forward, full stride'
+        ]
+      },
+      {
+        id: 'attack', name: 'Attack', defaultFrames: 6,
+        pose: 'melee attack animation',
+        keyframes: [
+          'crouching slightly, weapon raised behind head, wind-up pose',
+          'beginning forward swing, weapon in motion',
+          'mid swing, weapon at horizontal, full extension',
+          'weapon at follow-through, arm extended forward',
+          'recovery pose, returning weapon, slight recoil',
+          'back to idle stance, weapon lowered'
+        ]
+      },
+      {
+        id: 'jump', name: 'Jump', defaultFrames: 5,
+        pose: 'jump animation arc',
+        keyframes: [
+          'crouching with bent knees, coiled to jump, anticipation pose',
+          'leaving ground, legs pushing off, upward momentum',
+          'at apex of jump, fully airborne, arms outstretched, peak height',
+          'beginning descent, falling, legs tucking slightly',
+          'landing, knees bent absorbing impact, foot touching ground'
+        ]
+      },
+      {
+        id: 'hurt', name: 'Hurt', defaultFrames: 3,
+        pose: 'taking damage',
+        keyframes: [
+          'hit flash, recoiling backwards from impact, surprised expression',
+          'mid recoil, knocked back, arms flailing',
+          'recovering, slightly hunched, still reacting to pain'
+        ]
+      },
+      {
+        id: 'death', name: 'Death', defaultFrames: 6,
+        pose: 'death animation',
+        keyframes: [
+          'final hit received, body jerking backward',
+          'beginning to fall, knees buckling, body going limp',
+          'falling forward or sideways, arms splayed',
+          'halfway to ground, body crumpling',
+          'nearly horizontal, almost completely fallen',
+          'flat on ground, completely still, defeated'
+        ]
+      },
+      {
+        id: 'cast', name: 'Cast Magic', defaultFrames: 6,
+        pose: 'spell casting animation',
+        keyframes: [
+          'gathering energy, both hands lowered, concentration face',
+          'raising hands, energy accumulating around hands',
+          'hands raised high, magic energy glowing around fingers',
+          'casting forward, releasing energy from outstretched hands',
+          'energy burst emitting, arms extended forward',
+          'follow through, arms lowering, recovering from cast'
+        ]
+      }
     ];
 
     let selectedAnimations = [];
@@ -2093,15 +2244,24 @@
     }
 
     function approveReference() {
-      // Get filename from the loaded image src
-      const src = document.getElementById('spriteRefImg').src;
-      const urlParams = new URLSearchParams(src.split('?')[1]);
-      referenceImageFilename = urlParams.get('filename');
+      const imgEl = document.getElementById('spriteRefImg');
+      const src = imgEl.src;
+
+      // Reset stale upload name so the new reference is freshly uploaded
+      baseRefUploadName = null;
+
+      if (src.startsWith('blob:')) {
+        // Custom PNG upload path — blob URL has no URL params
+        // referenceImageFilename stays null; startAnimationQueue will upload baseRefBlob directly
+        referenceImageFilename = '__blob__';
+      } else {
+        const urlParams = new URLSearchParams(src.split('?')[1]);
+        referenceImageFilename = urlParams.get('filename');
+      }
 
       if (!referenceImageFilename) return;
 
       document.getElementById('stage2Config').style.display = 'block';
-      // Scroll to stage 2
       document.getElementById('stage2Config').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -2113,14 +2273,26 @@
     // ============================================================
     let canvasCtx = null;
     let baseRefUploadName = null;
+    let cancelGenerationFlag = false; // P2 Gap 2: Cancel support
+
+    function cancelAnimationQueue() {
+      cancelGenerationFlag = true;
+      setSpriteStatus('⛔ Cancelling after current frame...', 'error');
+      document.getElementById('btnCancelAnim').disabled = true;
+      document.getElementById('btnCancelAnim').textContent = 'Cancelling...';
+    }
 
     async function startAnimationQueue() {
       const selectedAnims = getCheckedAnimIds();
-      currentAnimationGrid = selectedAnims; // Save for per-cell clicks
+      currentAnimationGrid = selectedAnims;
       if (selectedAnims.length === 0) {
         alert("Please select at least one animation format.");
         return;
       }
+
+      // P2 Bug 7: Reset stale reference upload name at start of each generation run
+      baseRefUploadName = null;
+      cancelGenerationFlag = false;
 
       const framesCount = parseInt(document.getElementById('frameCountSlider').value) || 8;
       const denoise = parseFloat(document.getElementById('denoiseSlider').value) || 0.35;
@@ -2131,10 +2303,13 @@
       const basePositivePrompt = `${userPrompt}, ${posKw}`;
       const baseNegativePrompt = negKw;
 
-      // Lock UI
+      // Lock UI, show Cancel button
       const btn = document.getElementById('btnStartAnim');
       btn.disabled = true;
       btn.textContent = '⏳ Animation Engine Running…';
+      document.getElementById('btnCancelAnim').style.display = 'block';
+      document.getElementById('btnCancelAnim').disabled = false;
+      document.getElementById('btnCancelAnim').textContent = '⛔ Cancel';
 
       // Show Progress & Result Area
       document.getElementById('stage3Progress').style.display = 'block';
@@ -2144,10 +2319,10 @@
       const timelineContainer = document.getElementById('timelineContainer');
       timelineContainer.innerHTML = '';
 
-      // Initialize Canvas Grid
+      // Initialize Canvas Grid — P2 Bug 6: use selectedAnims.length not stale global
       const canvas = document.getElementById('spriteCanvas');
       canvas.width = activeSpriteSize * framesCount;
-      canvas.height = activeSpriteSize * selectedAnimations.length;
+      canvas.height = activeSpriteSize * selectedAnims.length;
       canvas.style.display = 'block';
       document.getElementById('canvasEmptyMsg').style.display = 'none';
       canvasCtx = canvas.getContext('2d');
@@ -2200,16 +2375,17 @@
 
         const playBtn = document.createElement('button');
         playBtn.innerText = '▶️ Play';
-        playBtn.style.padding = '2px 8px';
-        playBtn.style.fontSize = '10px';
-        playBtn.style.cursor = 'pointer';
-        playBtn.style.background = 'var(--accent-glow)';
-        playBtn.style.border = '1px solid var(--accent)';
-        playBtn.style.color = 'var(--accent)';
-        playBtn.style.borderRadius = '4px';
-        playBtn.style.display = 'none'; // hidden until finished
+        playBtn.style.cssText = 'padding:2px 8px; font-size:10px; cursor:pointer; background:var(--accent-glow); border:1px solid var(--accent); color:var(--accent); border-radius:4px; display:none;';
         playBtn.onclick = () => playAnimationLoop(animId, rowIndex, framesCount);
         rowDiv.appendChild(playBtn);
+
+        // Retry Row button (P3 Gap 1)
+        const retryRowBtn = document.createElement('button');
+        retryRowBtn.innerText = '♻️';
+        retryRowBtn.title = 'Retry entire row';
+        retryRowBtn.style.cssText = 'padding:2px 6px; font-size:10px; cursor:pointer; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; display:none;';
+        retryRowBtn.onclick = () => retryAnimationRow(animId, rowIndex, framesCount);
+        rowDiv.appendChild(retryRowBtn);
 
         timelineContainer.appendChild(rowDiv);
 
@@ -2217,28 +2393,46 @@
         const overrideInput = document.getElementById(`poseOverride_${animId}`);
         const activePose = overrideInput ? overrideInput.value.trim() : preset.pose;
 
-        rowStatuses[animId] = { div: framesDiv, playBtn: playBtn, currentFrame: 0, pose: activePose };
+        rowStatuses[animId] = { div: framesDiv, playBtn, retryRowBtn, currentFrame: 0, pose: activePose };
       });
 
       // 3. Execute Queue (Sequential Loop)
       for (let r = 0; r < selectedAnimations.length; r++) {
         const animId = selectedAnimations[r];
         const status = rowStatuses[animId];
+        // Get the preset for THIS animation to access its keyframes
+        const preset = ANIMATION_PRESETS.find(p => p.id === animId);
 
-        // Dynamic prompt to enforce sequence awareness + user's base style
-        const animPrompt = `${basePositivePrompt}, ${status.pose}`;
+        // Dynamic prompt: use the per-frame keyframe if it exists, otherwise use base pose
+        const getFramePrompt = (frameIndex) => {
+          if (preset && preset.keyframes && preset.keyframes.length > 0) {
+            return `${basePositivePrompt}, ${preset.keyframes[frameIndex % preset.keyframes.length]}`;
+          }
+          return `${basePositivePrompt}, ${status.pose}`;
+        };
 
         // Temporal Consistency: We start with the base reference, but update it after every frame!
         let currentFrameRefImg = baseRefUploadName;
 
         for (let c = 0; c < framesCount; c++) {
+          // P2 Gap 2: Check cancel flag before each frame — declare timelineStr first
+          let timelineStr;
+          if (cancelGenerationFlag) {
+            timelineStr = '\u2705'.repeat(c) + '\u274c'.repeat(framesCount - c);
+            status.div.innerText = timelineStr;
+            break;
+          }
+
           // Update timeline: ⏳ for current
-          let timelineStr = '✅'.repeat(c) + '⏳' + '⬜'.repeat(framesCount - c - 1);
+          timelineStr = '\u2705'.repeat(c) + '\u23f3' + '\u2b1c'.repeat(framesCount - c - 1);
           status.div.innerText = timelineStr;
 
           setSpriteStatus(`Animating ${animId} - Frame ${c + 1}/${framesCount}...`, 'active');
           showSpriteProgress(true);
           setProgress(0);
+
+          // Build per-frame prompt using keyframes
+          const animPrompt = getFramePrompt(c, framesCount);
 
           try {
             // Determine steps for img2img (usually fewer than txt2img)
@@ -2297,30 +2491,31 @@
 
           } catch (err) {
             console.error(err);
-            // Update timeline: ❌ for error
-            timelineStr = '✅'.repeat(c) + '❌' + '⬜'.repeat(framesCount - c - 1);
+            // P2 Bug 8: Mark ❌ and CONTINUE to next frame instead of aborting whole queue
+            timelineStr = '\u2705'.repeat(c) + '\u274c' + '\u2b1c'.repeat(framesCount - c - 1);
             status.div.innerText = timelineStr;
-            setSpriteStatus(`Error on ${animId} frame ${c + 1}: ${err.message}`, 'error');
-
-            // Abort the entire queue on error for now
-            btn.disabled = false;
-            btn.textContent = '✦ Start Sequential Generation';
-            showSpriteProgress(false);
-            return;
+            setSpriteStatus(`Error on ${animId} frame ${c + 1}: ${err.message} — Continuing...`, 'error');
+            // Don't return — just continue the loop
           }
         }
 
-        // Expose the Play button for this row once it fully completes
+        // Expose the Play + Retry Row buttons for this row once it fully completes
         status.playBtn.style.display = 'block';
+        status.retryRowBtn.style.display = 'block';
       }
 
       // 4. Completed
-      setSpriteStatus('✨ Sprite Sheet sequence complete!', 'success');
+      const wasCancelled = cancelGenerationFlag;
+      setSpriteStatus(wasCancelled ? '⛔ Generation cancelled.' : '✨ Sprite Sheet sequence complete!', wasCancelled ? 'error' : 'success');
       showSpriteProgress(false);
       btn.disabled = false;
       btn.textContent = '✦ Start Sequential Generation';
-      document.getElementById('downloadSheetBtn').style.display = 'block';
-      document.getElementById('downloadZipBtn').style.display = 'block';
+      document.getElementById('btnCancelAnim').style.display = 'none';
+      cancelGenerationFlag = false;
+      if (!wasCancelled) {
+        document.getElementById('downloadSheetBtn').style.display = 'block';
+        document.getElementById('downloadZipBtn').style.display = 'block';
+      }
     }
 
     // ============================================================
@@ -2338,7 +2533,8 @@
     async function downloadFramesZip() {
       const canvas = document.getElementById('spriteCanvas');
       if (!currentAnimationGrid || currentAnimationGrid.length === 0) return;
-      const framesCount = parseInt(document.getElementById('animFrames').value, 10) || 8;
+      // P0 Bug 2 fix: correct slider ID was 'frameCountSlider' not 'animFrames'
+      const framesCount = parseInt(document.getElementById('frameCountSlider').value, 10) || 8;
 
       const zip = new JSZip();
 
@@ -2399,7 +2595,9 @@
       document.getElementById('previewModalLabel').innerText = `Preview: ${animId} - Frame ${col + 1}`;
       document.getElementById('modalRetryText').style.display = 'block';
       document.getElementById('btnRetryCell').style.display = 'block';
+      document.getElementById('btnCopyFrame').style.display = 'block';
       document.getElementById('btnDownloadGif').style.display = 'none';
+      document.getElementById('fpsControlRow').style.display = 'none';
       document.getElementById('cellPreviewModal').style.display = 'flex';
     });
 
@@ -2412,7 +2610,9 @@
       document.getElementById('previewModalLabel').innerText = `Preview: ${animId} (Animation Loop)`;
       document.getElementById('modalRetryText').style.display = 'none';
       document.getElementById('btnRetryCell').style.display = 'none';
+      document.getElementById('btnCopyFrame').style.display = 'none';
       document.getElementById('btnDownloadGif').style.display = 'block';
+      document.getElementById('fpsControlRow').style.display = 'block';
       document.getElementById('cellPreviewModal').style.display = 'flex';
 
       const previewCanvas = document.getElementById('cellPreviewCanvas');
@@ -2424,13 +2624,16 @@
       let currentFrame = 0;
       if (animationPreviewInterval) clearInterval(animationPreviewInterval);
 
+      // P3 Gap 6: read initial FPS from slider
+      let frameDuration = Math.round(1000 / parseInt(document.getElementById('fpsSlider').value));
+
       animationPreviewInterval = setInterval(() => {
         ctx.clearRect(0, 0, activeSpriteSize, activeSpriteSize);
         ctx.drawImage(sourceCanvas,
           currentFrame * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize,
           0, 0, activeSpriteSize, activeSpriteSize);
         currentFrame = (currentFrame + 1) % framesCount;
-      }, 150); // ~6.6 fps
+      }, frameDuration);
     }
 
     function closeCellPreview() {
@@ -2439,6 +2642,97 @@
         clearInterval(animationPreviewInterval);
         animationPreviewInterval = null;
       }
+    }
+
+    // P3 Gap 6: Live FPS update from the fps slider
+    function updatePreviewFps(val) {
+      document.getElementById('fpsLabel').innerText = parseFloat(val).toFixed(1);
+      if (!activeAnimationData || !animationPreviewInterval) return;
+      // Restart the interval at the new speed
+      const { animId, row, framesCount } = activeAnimationData;
+      playAnimationLoop(animId, row, framesCount);
+    }
+
+    // P3 Gap 5: Copy current single-frame preview to clipboard
+    async function copyFrameToClipboard() {
+      const canvas = document.getElementById('cellPreviewCanvas');
+      const btn = document.getElementById('btnCopyFrame');
+      try {
+        canvas.toBlob(async (blob) => {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          btn.innerText = '✅ Copied!';
+          setTimeout(() => { btn.innerText = '📋 Copy Frame to Clipboard'; }, 2000);
+        });
+      } catch (e) {
+        btn.innerText = '❌ Copy Failed';
+        setTimeout(() => { btn.innerText = '📋 Copy Frame to Clipboard'; }, 2000);
+      }
+    }
+
+    // P3 Gap 1: Re-run the full generation for one row
+    async function retryAnimationRow(animId, rowIndex, framesCount) {
+      const preset = ANIMATION_PRESETS.find(p => p.id === animId);
+      if (!preset || !canvasCtx || !baseRefUploadName) return;
+
+      const framesCountCurrent = framesCount;
+      const denoise = parseFloat(document.getElementById('denoiseSlider').value) || 0.55;
+      const userPrompt = document.getElementById('spritePrompt').value.trim();
+      let posKw = activeStyleKw.positive || 'pixel art, 16-bit, retro game sprite, isolated on solid white background, full body';
+      const basePositivePrompt = `${userPrompt}, ${posKw}`;
+      const baseNegativePrompt = activeStyleKw.negative || 'photorealistic, blurry, noise, 3d, realistic, background details';
+
+      const getFramePrompt = (fi) => preset.keyframes && preset.keyframes.length > 0
+        ? `${basePositivePrompt}, ${preset.keyframes[fi % preset.keyframes.length]}`
+        : `${basePositivePrompt}, ${preset.pose}`;
+
+      let currentFrameRefImg = baseRefUploadName;
+
+      const timelineDiv = document.getElementById(`timeline_${animId}`);
+
+      for (let c = 0; c < framesCountCurrent; c++) {
+        if (timelineDiv) timelineDiv.innerText = '✅'.repeat(c) + '⏳' + '⬜'.repeat(framesCountCurrent - c - 1);
+        setSpriteStatus(`Retrying ${animId} - Frame ${c + 1}/${framesCountCurrent}...`, 'active');
+
+        try {
+          let steps = 15; let cfg = 7.0;
+          if (selectedModel.type === 'sdxl_lightning') { steps = 4; cfg = 2.0; }
+
+          const workflowData = buildImg2ImgWorkflow(
+            currentFrameRefImg, getFramePrompt(c), baseNegativePrompt,
+            { name: selectedModel.name, type: selectedModel.type, steps, cfg, denoise }
+          );
+
+          const res = await fetch(`http://${COMFY_API}/prompt`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
+          });
+          if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
+          const { prompt_id } = await res.json();
+          const filename = await pollHistory(prompt_id);
+          const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+
+          await new Promise((resolve, reject) => {
+            const img = new Image(); img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+              canvasCtx.drawImage(img, c * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+              resolve();
+            };
+            img.onerror = reject; img.src = imgUrl;
+          });
+
+          const blobRes = await fetch(imgUrl);
+          const blob = await blobRes.blob();
+          currentFrameRefImg = await uploadImageToComfy(blob, `recur_retry_${animId}_${c}.png`);
+
+          if (timelineDiv) timelineDiv.innerText = '✅'.repeat(c + 1) + '⬜'.repeat(framesCountCurrent - c - 1);
+        } catch (err) {
+          if (timelineDiv) timelineDiv.innerText = '✅'.repeat(c) + '❌' + '⬜'.repeat(framesCountCurrent - c - 1);
+          setSpriteStatus(`Retry error on ${animId} frame ${c + 1}: ${err.message}`, 'error');
+        }
+      }
+      setSpriteStatus(`✅ Row ${animId} retried!`, 'success');
     }
 
     async function exportActiveAnimationGif() {
