@@ -1358,6 +1358,103 @@
       font-size: 18px;
       cursor: pointer;
     }
+
+    /* ── BATCH PILLS — fix #19 ── */
+    .batch-pill {
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .batch-pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .batch-pill:hover:not(.active) {
+      border-color: var(--border-focus);
+      color: var(--text-primary);
+    }
+
+    /* ── BATCH GRID ── */
+    #batchGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .batch-item {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .batch-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .batch-item .batch-dl {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.6);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      padding: 3px 8px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .batch-item:hover .batch-dl {
+      opacity: 1;
+    }
+
+    /* ── THEME SWITCHER — fix #28 ── */
+    [data-theme="light"] {
+      --bg-primary: #f8f8fc;
+      --bg-card: #ffffff;
+      --bg-input: #f0f0f7;
+      --text-primary: #1a1a2e;
+      --text-muted: #555570;
+      --text-dim: #888899;
+      --border: #d0d0e0;
+      --border-focus: #4d7cff;
+      --shadow: rgba(0, 0, 0, 0.12);
+      --accent-glow: rgba(77, 124, 255, 0.12);
+    }
+
+    .theme-toggle {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
   </style>
 </head>
 
@@ -1410,6 +1507,10 @@
         <button onclick="openSettings()"
           style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--text-muted); cursor:pointer;">
           ⚙️ Settings
+        </button>
+        <!-- fix #28: theme toggle -->
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme">
+          🌙
         </button>
       </div>
     </header>
@@ -1556,9 +1657,23 @@
       </div>
 
       <!-- ── ACTION BUTTONS ── -->
+      <!-- fix #19: batch count selector -->
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <span
+          style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Batch</span>
+        <div style="display:flex; gap:4px;" id="batchPills">
+          <button class="batch-pill active" data-count="1" onclick="setBatchCount(1)"
+            aria-label="Generate 1 image">1</button>
+          <button class="batch-pill" data-count="2" onclick="setBatchCount(2)" aria-label="Generate 2 images">2</button>
+          <button class="batch-pill" data-count="3" onclick="setBatchCount(3)" aria-label="Generate 3 images">3</button>
+          <button class="batch-pill" data-count="4" onclick="setBatchCount(4)" aria-label="Generate 4 images">4</button>
+        </div>
+      </div>
       <div class="action-row">
-        <button class="btn-generate" id="generateBtn" onclick="generateImage()">✦ Generate Image</button>
-        <button class="btn-download" id="downloadBtn" onclick="downloadImage()" title="Save image">⬇</button>
+        <button class="btn-generate" id="generateBtn" onclick="generateImage()" aria-label="Start image generation">✦
+          Generate Image</button>
+        <button class="btn-download" id="downloadBtn" onclick="downloadImage()" title="Save image"
+          aria-label="Download generated image">⬇</button>
       </div>
 
 
@@ -1591,6 +1706,9 @@
 
         <img id="resultImage" alt="Generated image">
       </div>
+
+      <!-- ── BATCH RESULTS GRID — fix #19 ── -->
+      <div id="batchGrid" style="display:none; gap:10px; margin-top:14px;"></div>
 
       <!-- ── IMAGE META ── -->
       <div class="image-meta" id="imageMeta">
@@ -2502,6 +2620,91 @@
         setTabActivity('imagegen', false);
         checkComfyStatus();
       }
+    }
+
+    // ============================================================
+    //  BATCH GENERATION — fix #19
+    // ============================================================
+    let _batchCount = 1;
+
+    function setBatchCount(n) {
+      _batchCount = n;
+      document.querySelectorAll('.batch-pill').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.count) === n);
+      });
+      const btn = document.getElementById('generateBtn');
+      btn.textContent = n > 1 ? `✦ Generate ${n} Images` : '✦ Generate Image';
+    }
+
+    // Wrap generateImage to support batch: run it n times sequentially
+    const _originalGenerateImage = generateImage;
+    generateImage = async function () {
+      const n = _batchCount;
+      if (n === 1) { return _originalGenerateImage(); }
+
+      // Multi-image batch run
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true;
+      btn.textContent = `⏳ Batch 0/${n}…`;
+
+      const grid = document.getElementById('batchGrid');
+      grid.innerHTML = '';
+      grid.style.display = 'grid';
+
+      // Pre-create placeholder cards
+      const cards = Array.from({ length: n }, (_, i) => {
+        const card = document.createElement('div');
+        card.className = 'batch-item';
+        card.innerHTML = `<div style="color:var(--text-dim);font-size:12px;">⏳ ${i + 1}/${n}</div>`;
+        grid.appendChild(card);
+        return card;
+      });
+
+      for (let i = 0; i < n; i++) {
+        btn.textContent = `⏳ Batch ${i + 1}/${n}…`;
+        try {
+          // Run single generation
+          await _originalGenerateImage();
+          // Grab the URL from the result image
+          const src = document.getElementById('resultImage').src;
+          if (src) {
+            cards[i].innerHTML = `<img src="${src}" alt="Batch image ${i + 1}">
+              <button class="batch-dl" onclick="downloadBatchImage('${src}', ${i + 1})" aria-label="Download batch image ${i + 1}">⬇</button>`;
+          }
+        } catch (e) {
+          cards[i].innerHTML = `<div style="color:var(--error);font-size:11px;padding:8px;">❌ ${e.message}</div>`;
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = `✦ Generate ${n} Images`;
+      setStatus(`✅ Batch of ${n} complete!`, 'success');
+    };
+
+    function downloadBatchImage(src, idx) {
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = `epoch_batch_${idx}_${Date.now()}.png`;
+      a.click();
+    }
+
+    // ============================================================
+    //  THEME SWITCHER — fix #28
+    // ============================================================
+    function toggleTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      const next = isDark ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('epoch_theme', next);
+      document.getElementById('themeToggle').textContent = next === 'light' ? '☀️' : '🌙';
+    }
+
+    // Apply saved theme on startup (called from DOMContentLoaded)
+    function applyTheme() {
+      const saved = localStorage.getItem('epoch_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+      const btn = document.getElementById('themeToggle');
+      if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
     }
 
     // ============================================================
@@ -4070,6 +4273,7 @@
     // ============================================================
     document.addEventListener('DOMContentLoaded', () => {
       loadSettings(); // fix #6: apply persisted ComfyUI/TrafficCop addresses on startup
+      applyTheme();   // fix #28: restore saved light/dark theme on startup
       checkForRecovery();
     });
     // Also check immediately in case DOMContentLoaded already fired
