@@ -21,6 +21,7 @@ import { buildWorkflow } from './workflows.js';
 import { checkForRecovery } from './session.js';
 import { initCanvasEventListeners } from './canvas.js';
 import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue } from './sprite_engine.js';
+import { startVideoGen, cancelVideoGen, selectVideoModel } from './video_engine.js';
 
 // ============================================================
 //  MAIN GENERATOR ORCHESTRATION & APP INIT
@@ -406,11 +407,41 @@ export function initEventListeners() {
     if (el_btnTabImagegen) el_btnTabImagegen.addEventListener('click', (e) => { switchTab('imagegen') });
     const el_btnTabSpritegen = document.getElementById('btnTabSpritegen');
     if (el_btnTabSpritegen) el_btnTabSpritegen.addEventListener('click', (e) => { switchTab('spritegen') });
-    // Bottom nav (mobile) — mirrors top tab nav
+    const el_btnTabVideogen = document.getElementById('btnTabVideogen');
+    if (el_btnTabVideogen) el_btnTabVideogen.addEventListener('click', () => { switchTab('videogen'); syncBottomNav('videogen'); });
+    // Bottom nav (mobile) — all 3 tabs
     const el_btnBottomTabImagegen = document.getElementById('btnBottomTabImagegen');
     if (el_btnBottomTabImagegen) el_btnBottomTabImagegen.addEventListener('click', () => { switchTab('imagegen'); syncBottomNav('imagegen'); });
     const el_btnBottomTabSpritegen = document.getElementById('btnBottomTabSpritegen');
     if (el_btnBottomTabSpritegen) el_btnBottomTabSpritegen.addEventListener('click', () => { switchTab('spritegen'); syncBottomNav('spritegen'); });
+    const el_btnBottomTabVideogen = document.getElementById('btnBottomTabVideogen');
+    if (el_btnBottomTabVideogen) el_btnBottomTabVideogen.addEventListener('click', () => { switchTab('videogen'); syncBottomNav('videogen'); });
+    // Video model chips — event delegation
+    document.querySelectorAll('.video-model-chip').forEach(chip => {
+        chip.addEventListener('click', () => selectVideoModel(chip));
+    });
+    // Frame count + FPS sliders live update
+    const el_videoFrameSlider = document.getElementById('videoFrameSlider');
+    if (el_videoFrameSlider) el_videoFrameSlider.addEventListener('input', () => {
+        document.getElementById('videoFrameVal').textContent = el_videoFrameSlider.value;
+    });
+    const el_videoFpsSlider = document.getElementById('videoFpsSlider');
+    if (el_videoFpsSlider) el_videoFpsSlider.addEventListener('input', () => {
+        document.getElementById('videoFpsVal').textContent = el_videoFpsSlider.value;
+    });
+    // Start / Cancel video gen
+    const el_btnStartVideo = document.getElementById('btnStartVideo');
+    if (el_btnStartVideo) el_btnStartVideo.addEventListener('click', () => startVideoGen());
+    const el_btnCancelVideo = document.getElementById('btnCancelVideo');
+    if (el_btnCancelVideo) el_btnCancelVideo.addEventListener('click', () => cancelVideoGen());
+    // Show result card when GIF loads
+    const el_videoResult = document.getElementById('videoResult');
+    if (el_videoResult) el_videoResult.addEventListener('load', () => {
+        const card = document.getElementById('videoResultCard');
+        if (card) card.style.display = 'block';
+        el_videoResult.style.display = 'block';
+        document.getElementById('btnDownloadVideo').style.display = 'inline-flex';
+    });
     // Style chips — event delegation
     document.querySelectorAll('.style-chip').forEach(chip => {
         chip.addEventListener('click', (e) => selectStyle(e.currentTarget));

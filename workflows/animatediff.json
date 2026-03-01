@@ -1,0 +1,121 @@
+{
+    "1": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+            "ckpt_name": "DreamShaper_8_pruned.safetensors"
+        }
+    },
+    "2": {
+        "class_type": "ADE_AnimateDiffLoaderWithContext",
+        "inputs": {
+            "model_name": "mm_sd_v15_v3.safetensors",
+            "beta_schedule": "autoselect",
+            "model": [
+                "1",
+                0
+            ],
+            "context_options": [
+                "10",
+                0
+            ]
+        }
+    },
+    "3": {
+        "class_type": "VAELoader",
+        "inputs": {
+            "vae_name": "vae-ft-mse-840000-ema-pruned.safetensors"
+        }
+    },
+    "4": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+            "text": "POSITIVE_PROMPT",
+            "clip": [
+                "1",
+                1
+            ]
+        }
+    },
+    "5": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+            "text": "NEGATIVE_PROMPT",
+            "clip": [
+                "1",
+                1
+            ]
+        }
+    },
+    "6": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+            "width": 512,
+            "height": 512,
+            "batch_size": 16
+        }
+    },
+    "7": {
+        "class_type": "KSampler",
+        "inputs": {
+            "seed": 42,
+            "steps": 20,
+            "cfg": 7.0,
+            "sampler_name": "euler_ancestral",
+            "scheduler": "karras",
+            "denoise": 1.0,
+            "model": [
+                "2",
+                0
+            ],
+            "positive": [
+                "4",
+                0
+            ],
+            "negative": [
+                "5",
+                0
+            ],
+            "latent_image": [
+                "6",
+                0
+            ]
+        }
+    },
+    "8": {
+        "class_type": "VAEDecode",
+        "inputs": {
+            "samples": [
+                "7",
+                0
+            ],
+            "vae": [
+                "3",
+                0
+            ]
+        }
+    },
+    "9": {
+        "class_type": "VHS_VideoCombine",
+        "inputs": {
+            "frame_rate": 8,
+            "loop_count": 0,
+            "filename_prefix": "animatediff",
+            "format": "image/gif",
+            "save_output": true,
+            "images": [
+                "8",
+                0
+            ]
+        }
+    },
+    "10": {
+        "class_type": "ADE_LoopedUniformContextOptions",
+        "inputs": {
+            "request_n_frames": 16,
+            "length": 16,
+            "stride": 1,
+            "overlap": 4,
+            "closed_loop": false
+        }
+    }
+}

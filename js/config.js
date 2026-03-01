@@ -210,3 +210,45 @@ export function setImgHeight(val) { imgHeight = val; }
 export function setActiveStyleKw(val) { activeStyleKw = val; }
 
 export function setCanvasCtx(val) { canvasCtx = val; }
+
+// ============================================================
+//  TAB 3 — ANIMATEDIFF VIDEO GEN CONSTANTS & STATE
+// ============================================================
+
+/** Motion module filename — must live in ComfyUI models/animatediff_models/ */
+export const ANIMATEDIFF_MODEL = 'mm_sd_v15_v3.safetensors';
+
+/**
+ * Only SD1.5 checkpoints are compatible with AnimateDiff.
+ * This list controls what model chips are shown in Tab 3.
+ */
+export const ANIMATEDIFF_COMPAT_MODELS = [
+  { name: 'DreamShaper_8_pruned.safetensors', type: 'sd15', label: 'DreamShaper 8' },
+  { name: 'epiCRealism_naturalSinRC1.safetensors', type: 'sd15', label: 'epiCRealism' }
+];
+
+/** Default generation parameters for AnimateDiff */
+export const ANIMATEDIFF_DEFAULTS = {
+  frameCount: 16,
+  fps: 8,
+  width: 512,
+  height: 512,
+  steps: 20,
+  cfg: 7.0,
+  sampler: 'euler_ancestral',
+  scheduler: 'karras'
+};
+
+// Video gen reactive state
+export let selectedVideoModel = { ...ANIMATEDIFF_COMPAT_MODELS[0] };
+export let videoFrameCount = ANIMATEDIFF_DEFAULTS.frameCount;
+export let videoFps = ANIMATEDIFF_DEFAULTS.fps;
+export let videoImgWidth = ANIMATEDIFF_DEFAULTS.width;
+export let videoImgHeight = ANIMATEDIFF_DEFAULTS.height;
+
+export function setSelectedVideoModel(val) { selectedVideoModel = val; }
+export function setVideoFrameCount(val) { videoFrameCount = val; }
+export function setVideoFps(val) { videoFps = val; }
+export function setVideoImgWidth(val) { videoImgWidth = val; }
+export function setVideoImgHeight(val) { videoImgHeight = val; }
+

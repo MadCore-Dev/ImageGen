@@ -138,6 +138,29 @@ export function showSpriteProgress(visible) {
     else { stopTipCycle(); setProgress(0); }
 }
 
+export function setVideoStatus(msg, state = 'idle') {
+    const bar = document.getElementById('videoStatusBar');
+    const text = document.getElementById('videoStatusText');
+    if (!bar || !text) return;
+    bar.style.display = 'flex';
+    bar.className = 'status-bar ' + state;
+    text.textContent = msg;
+}
+
+export function setVideoProgress(pc) {
+    const bar = document.getElementById('videoProgressBar');
+    if (bar) bar.style.width = `${pc}%`;
+    const pct = document.getElementById('videoStatusPct');
+    if (pct) pct.textContent = `${pc}%`;
+}
+
+export function showVideoProgress(visible) {
+    const c = document.getElementById('videoProgressContainer');
+    if (c) c.classList.toggle('visible', visible);
+    if (visible) startTipCycle('videoTipText');
+    else { setVideoProgress(0); stopTipCycle(); }
+}
+
 // --- App State Initializers ---
 export function applyTheme() {
     const saved = localStorage.getItem('setting_theme') || 'dark';

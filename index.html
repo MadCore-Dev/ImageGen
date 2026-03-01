@@ -67,12 +67,13 @@
       </div>
     </header>
 
-    <!-- ── TABS NAVIGATION ── -->
     <div class="tab-nav">
       <button class="tab-btn active" id="btnTabImagegen" data-tab="imagegen">🎨 Image
         Gen<span class="tab-activity-dot"></span></button>
       <button class="tab-btn" id="btnTabSpritegen" data-tab="spritegen">🕹 Sprite
         Sheet<span class="tab-activity-dot"></span></button>
+      <button class="tab-btn" id="btnTabVideogen" data-tab="videogen">🎬 Animate<span
+          class="tab-activity-dot"></span></button>
     </div>
 
     <!-- ── TAB 1: IMAGE GEN ── -->
@@ -500,6 +501,88 @@
       </div>
     </div>
 
+    <!-- ── TAB 3: ANIMATE (AnimateDiff) ── -->
+    <div id="tab-videogen" class="tab-content">
+
+      <!-- Model selector — SD1.5 only -->
+      <div class="card">
+        <div class="card-label">Model <span
+            style="color:var(--text-dim); font-weight:400; font-size:10px; text-transform:none; letter-spacing:0; margin-left:4px;">→
+            SD1.5 only (AnimateDiff compatible)</span></div>
+        <div class="sprite-model-grid" id="videoModelGroup">
+          <button class="video-model-chip sprite-model-chip active"
+            data-model="DreamShaper_8_pruned.safetensors">DreamShaper 8</button>
+          <button class="video-model-chip sprite-model-chip"
+            data-model="epiCRealism_naturalSinRC1.safetensors">epiCRealism</button>
+        </div>
+      </div>
+
+      <!-- Prompt card -->
+      <div class="card gap-md">
+        <div class="gap-sm">
+          <label class="lbl" for="videoPrompt">Motion Prompt</label>
+          <textarea id="videoPrompt" class="prompt-input"
+            placeholder="a warrior swinging a sword, dynamic motion, full body, white background, pixel art style"
+            rows="3" aria-label="Animation prompt"></textarea>
+        </div>
+        <div class="gap-sm">
+          <label class="lbl" for="videoNegPrompt">Negative Prompt</label>
+          <textarea id="videoNegPrompt" class="prompt-input"
+            placeholder="watermark, text, blurry, low quality, deformed, duplicate frames" rows="2"
+            aria-label="Negative prompt" style="min-height:56px;"></textarea>
+        </div>
+      </div>
+
+      <!-- Parameters card -->
+      <div class="card gap-md">
+        <div class="controls-grid">
+          <div class="control-item">
+            <label class="control-label" for="videoFrameSlider">Frames</label>
+            <input type="range" id="videoFrameSlider" min="8" max="32" step="8" value="16" class="slider"
+              aria-label="Frame count">
+            <span class="control-value" id="videoFrameVal">16</span>
+          </div>
+          <div class="control-item">
+            <label class="control-label" for="videoFpsSlider">FPS</label>
+            <input type="range" id="videoFpsSlider" min="4" max="24" step="4" value="8" class="slider"
+              aria-label="Frames per second">
+            <span class="control-value" id="videoFpsVal">8</span>
+          </div>
+        </div>
+        <p class="hint">16 frames @ 8 FPS = 2s loop · 32 frames @ 8 FPS = 4s loop</p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex-row gap-md" style="margin-top:12px;">
+        <button class="btn-generate" id="btnStartVideo" style="flex:3; position:relative;"
+          aria-label="Generate animation">▶ Generate Animation</button>
+        <button class="btn-cancel" id="btnCancelVideo" style="display:none; flex:1;" aria-label="Cancel animation">✕
+          Cancel</button>
+      </div>
+
+      <!-- Status + progress -->
+      <div id="videoStatusBar" class="status-bar" style="display:none; margin-top:12px; padding:10px 14px;">
+        <span id="videoStatusText" class="status-text">Idle</span>
+        <span id="videoStatusPct" class="status-pct"></span>
+      </div>
+      <div id="videoProgressContainer" class="progress-container" style="margin-top:4px;">
+        <div id="videoProgressBar" class="progress-bar"></div>
+      </div>
+      <p id="videoTipText" class="tip-text" style="margin-top:6px;"></p>
+
+      <!-- Result -->
+      <div class="card gap-md" id="videoResultCard" style="margin-top:16px; display:none;">
+        <div class="card-label">🎬 Output</div>
+        <img id="videoResult" alt="Generated animation"
+          style="width:100%; border-radius:8px; image-rendering:auto; display:none;">
+        <div class="flex-row gap-md" style="margin-top:8px;">
+          <button class="btn-download" id="btnDownloadVideo" style="display:none; flex:1;" aria-label="Download GIF">⬇
+            Download GIF</button>
+        </div>
+      </div>
+
+    </div><!-- /tab-videogen -->
+
   </div><!-- /app-wrapper -->
 
   <!-- Per-cell Preview Modal -->
@@ -558,6 +641,10 @@
     <button class="bottom-tab-btn" id="btnBottomTabSpritegen" aria-label="Sprite Sheet tab">
       <span class="btb-icon">🕹</span>
       <span>Sprite Sheet</span>
+    </button>
+    <button class="bottom-tab-btn" id="btnBottomTabVideogen" aria-label="Animate tab">
+      <span class="btb-icon">🎬</span>
+      <span>Animate</span>
     </button>
   </nav>
 
