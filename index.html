@@ -2285,8 +2285,11 @@
             });
 
             // CRITICAL: Set the newly generated frame as the reference for the NEXT frame in the loop!
-            // This forces temporal consistency and creates actual animation instead of static identical poses!
-            currentFrameRefImg = filename;
+            // Since the generated image is in the 'output' directory but LoadImage needs it in 'input',
+            // we must fetch the blob and re-upload it to ComfyUI.
+            const newlyGeneratedBlobRes = await fetch(imgUrl);
+            const newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
+            currentFrameRefImg = await uploadImageToComfy(newlyGeneratedBlob, `recur_${animId}_${c}_${Date.now()}.png`);
 
             // Update timeline: ✅ for completed
             timelineStr = '✅'.repeat(c + 1) + '⬜'.repeat(framesCount - c - 1);
