@@ -350,6 +350,26 @@
       color: var(--text-dim);
     }
 
+    /* Style chips — compact on mobile (#13) */
+    @media (max-width: 600px) {
+      .style-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .style-chip {
+        padding: 9px 6px;
+        gap: 3px;
+      }
+
+      .style-chip .style-icon {
+        font-size: 18px;
+      }
+
+      .style-chip .style-name {
+        font-size: 10px;
+      }
+    }
+
     /* ============================================================
        INFO TRIGGER & TOOLTIP
     ============================================================ */
@@ -822,6 +842,77 @@
     }
 
     /* ============================================================
+       APPROVE BUTTON (#10 / #16 — class-managed, no inline opacity)
+    ============================================================ */
+    .btn-approve {
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px 24px;
+      border-radius: var(--radius);
+      border: none;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--success), #10b981);
+      color: white;
+      letter-spacing: 0.02em;
+      transition: all var(--transition);
+      box-shadow: 0 4px 16px rgba(52, 211, 153, 0.3);
+    }
+
+    .btn-approve:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-approve:not(:disabled):hover {
+      box-shadow: 0 6px 24px rgba(52, 211, 153, 0.45);
+      transform: translateY(-1px);
+    }
+
+    /* ============================================================
+       CSS UTILITY CLASSES (#18 — replace common inline styles)
+    ============================================================ */
+    .lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .hint-dim {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    .gap-sm {
+      margin-top: 10px;
+    }
+
+    .gap-md {
+      margin-top: 16px;
+    }
+
+    .w-full {
+      width: 100%;
+    }
+
+    .flex-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* ============================================================
        ADVANCED PANEL (collapsible sections)
     ============================================================ */
     details.adv-panel {
@@ -1110,10 +1201,10 @@
 
     <!-- ── TABS NAVIGATION ── -->
     <div class="tab-nav">
-      <button class="tab-btn active" id="btnTabImagegen" onclick="switchTab('imagegen')">🎨 Image Gen<span
-          class="tab-activity-dot"></span></button>
-      <button class="tab-btn" id="btnTabSpritegen" onclick="switchTab('spritegen')">🕹 Sprite Sheet<span
-          class="tab-activity-dot"></span></button>
+      <button class="tab-btn active" id="btnTabImagegen" data-tab="imagegen" onclick="switchTab('imagegen')">🎨 Image
+        Gen<span class="tab-activity-dot"></span></button>
+      <button class="tab-btn" id="btnTabSpritegen" data-tab="spritegen" onclick="switchTab('spritegen')">🕹 Sprite
+        Sheet<span class="tab-activity-dot"></span></button>
     </div>
 
     <!-- ── TAB 1: IMAGE GEN ── -->
@@ -1313,24 +1404,24 @@
 
       <div class="card">
         <div class="card-label">Stage 1: Reference Character</div>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Describe the character you want to
-          animate. A base reference frame will be generated as the foundation for the animation sequence.</p>
+        <p class="hint">Describe the character you want to animate. A base reference frame will be generated as the
+          foundation for the animation sequence.</p>
 
         <textarea id="spritePrompt" rows="3"
           placeholder="A 16-bit cybernetic ninja character, pixel art, standing idle..."></textarea>
 
-        <div style="margin-top:10px;">
-          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:6px;">Frame Size</label>
+        <div class="gap-sm">
+          <label class="lbl">Frame Size</label>
           <div class="preset-btns">
             <button class="preset-btn" onclick="setSpriteSize(16, this)">16×16</button>
             <button class="preset-btn" onclick="setSpriteSize(32, this)">32×32</button>
             <button class="preset-btn" onclick="setSpriteSize(48, this)">48×48</button>
-            <button class="preset-btn active" onclick="setSpriteSize(64, this)">64×64 (Dev Default)</button>
-            <button class="preset-btn" onclick="setSpriteSize(128, this)">128×128 (HD Sprite)</button>
+            <button class="preset-btn active" onclick="setSpriteSize(64, this)">64×64 (Default)</button>
+            <button class="preset-btn" onclick="setSpriteSize(128, this)">128×128 (HD)</button>
           </div>
         </div>
 
-        <div style="display:flex; gap:8px; margin-top:16px;">
+        <div class="flex-row gap-md">
           <button class="btn-generate" id="btnGenRef" onclick="generateSpriteRef()"
             style="flex:2; padding:10px 16px; font-size:13px;">✦ Generate Reference Frame</button>
 
@@ -1366,9 +1457,8 @@
         <img id="spriteRefImg" style="display:none; max-width:200px; object-fit:contain; image-rendering:pixelated;" />
       </div>
 
-      <button id="btnApproveRef" class="btn-generate" disabled onclick="approveReference()"
-        style="margin-top:16px; background:linear-gradient(135deg, var(--success), #10b981); opacity:0.5; width:100%; box-shadow:none;">Approve
-        & Continue →</button>
+      <button id="btnApproveRef" class="btn-approve" disabled onclick="approveReference()">Approve &amp; Continue
+        →</button>
 
       <!-- ── STAGE 2: ANIMATION CONFIG ── -->
       <div id="stage2Config" class="card" style="display:none; margin-top:16px;">
@@ -1472,7 +1562,7 @@
       </div>
     </div>
 
-  </div><!-- /tab-spritegen -->
+  </div><!-- /app-wrapper -->
 
   <!-- Per-cell Preview Modal -->
   <div id="cellPreviewModal"
@@ -1528,12 +1618,13 @@
     const TRAFFIC_COP = "http://127.0.0.1:5050";
     const COMFY_API = "127.0.0.1:8188";
 
-    // Tab state
+    // Tab state (#17: use data-tab attribute for cleaner, more robust lookups)
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
       document.getElementById(`tab-${tabId}`).classList.add('active');
-      document.getElementById(`btnTab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active');
+      const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+      if (tabBtn) tabBtn.classList.add('active');
     }
 
     const CLIENT_ID = Math.random().toString(36).substring(2, 10);
@@ -1542,7 +1633,7 @@
     const WS_MAX_RETRIES = 5;
 
     let baseRefBlob = null; // The file blob we generate in stage 1
-    let genSize = 512;      // Computed model width/height for generation
+    let genSize = 64;      // Computed model width/height for generation
     let currentAnimationGrid = []; // Grid mapping for canvas clicks
     let activeCell = { animId: null, frameIndex: null, row: null, col: null }; // For Retry Frame
 
@@ -2262,7 +2353,6 @@
       document.getElementById('spriteEmpty').style.display = 'none';
       document.getElementById('spriteLoaderWrap').classList.add('visible');
       document.getElementById('btnApproveRef').disabled = true;
-      document.getElementById('btnApproveRef').style.opacity = '0.5';
 
       setSpriteStatus('🚦 Initializing hardware…', 'active');
       showSpriteProgress(true);
@@ -2328,7 +2418,6 @@
 
         // Setup approval button (Phase 2 entry point)
         document.getElementById('btnApproveRef').disabled = false;
-        document.getElementById('btnApproveRef').style.opacity = '1';
 
         setSpriteStatus('✅ Reference character generated successfully!', 'success');
 
@@ -2371,7 +2460,6 @@
         document.getElementById('spriteRefImg').style.display = 'block';
 
         document.getElementById('btnApproveRef').disabled = false;
-        document.getElementById('btnApproveRef').style.opacity = '1';
 
         setSpriteStatus('Custom reference loaded!', 'success');
         showSpriteProgress(false);
