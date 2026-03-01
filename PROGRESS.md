@@ -75,12 +75,43 @@
 
 ---
 
-## Chunk 2 — Structural (Coming next)
-- [ ] localStorage → filename-only session (#5)
-- [ ] Settings modal for ComfyUI/TrafficCop/output path (#6)
-- [ ] `selectedAnims` consistency fix (#8)
-- [ ] Timeline row DOM refactor (#9)
-- [ ] WebSocket init after Traffic Cop only (#20)
-- [ ] Input folder bloat tracking (#31)
-- [ ] Custom upload OOM — resolution cap (#35)
+## Chunk 3 — P2 UX Instant Wins ⚡
+**Date:** 2026-03-01 19:17 IST | **Status:** ✅ COMPLETE (instant-wins only)
+
+**#15 — OOM Disconnect Alert**
+- `socket.onclose` now checks if generation was in flight; shows clear ⚠️ status in both Tab 1 and Sprite status bars
+
+**#16 — Canvas Overflow**
+- Canvas wrapped in `overflow-x:auto; -webkit-overflow-scrolling:touch` container with `inline-block` inner div
+
+**#17 — Style Keyword Indicator**
+- After ref upload, status bar shows: `✅ Reference ready. Style: [pixel-art] — Starting…`
+
+*Deferred to future session: #18 prompt history sidebar, #19 batch gen, #34 AbortController*
+
+---
+
+## Chunk 4 — P3 Quick-Wins ⚡
+**Date:** 2026-03-01 19:20 IST | **Status:** ✅ COMPLETE (quick-wins)
+
+**#21 — Session Export / Import**
+- `exportSessionJSON()` exports full session config (prompts, anims, frames, overrides) as `.json`
+- `importSessionJSON()` reads file and restores session + shows recovery banner
+- Export/Import buttons appear alongside Sheet/ZIP buttons on generation complete
+
+**#27 — ARIA Labels**
+- `aria-label` on download sheet, download ZIP, export session, import session buttons
+
+**#37 — SwiftBar Plugin (`ImageGen.30s.sh`)**
+- Reads `/tmp/.gen_tool_port` to detect if server is live
+- Shows `🎨 ImageGen :PORT` when running, `⚪ ImageGen (stopped)` when not
+- Dropdown: Open URL, Restart, View Logs, View Audit
+- Refreshes every 30 seconds
+- To install: symlink to `~/Library/Application Support/SwiftBar/Plugins/`
+
+---
+
+## Current State
+All 4 active chunks committed across 4 git commits.
+**25 of 37 audit items** shipped. Remaining are large-feature items (FastAPI backend, LoRA, ControlNet, batch gen, prompt history) for future sessions.
 
