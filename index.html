@@ -738,6 +738,52 @@
     }
 
     /* ============================================================
+       TABS NAVIGATION
+    ============================================================ */
+    .tab-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      padding: 4px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* ============================================================
        RESPONSIVE
     ============================================================ */
     @media (max-width: 600px) {
@@ -763,240 +809,291 @@
       <p class="subtitle">Fully offline image generation powered by ComfyUI & your local models</p>
     </header>
 
-    <!-- ── MODEL SELECTOR ── -->
-    <div class="card">
-      <div class="card-label">Model</div>
-      <div class="model-grid" id="modelGrid">
-        <button class="model-chip active" data-model="flux" data-type="gguf" onclick="selectModel(this)">
-          FLUX Schnell <span class="badge badge-flux">FLUX</span>
-        </button>
-        <button class="model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
-          onclick="selectModel(this)">
-          Juggernaut XL v9 <span class="badge badge-xl">XL</span>
-        </button>
-        <button class="model-chip" data-model="DreamShaperXL_Lightning.safetensors" data-type="sdxl_lightning"
-          onclick="selectModel(this)">
-          DreamShaper Lightning <span class="badge badge-speed">4-STEP</span>
-        </button>
-        <button class="model-chip" data-model="ponyDiffusionV6XL.safetensors" data-type="sdxl"
-          onclick="selectModel(this)">
-          Pony Diffusion V6 XL <span class="badge badge-xl">XL</span>
-        </button>
-        <button class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15"
-          onclick="selectModel(this)">
-          AnyLoRA <span class="badge badge-15">SD1.5</span>
-        </button>
-        <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
-          onclick="selectModel(this)">
-          DreamShaper 8 <span class="badge badge-15">SD1.5</span>
-        </button>
-      </div>
+    <!-- ── TABS NAVIGATION ── -->
+    <div class="tab-nav">
+      <button class="tab-btn active" id="btnTabImagegen" onclick="switchTab('imagegen')">🎨 Image Gen</button>
+      <button class="tab-btn" id="btnTabSpritegen" onclick="switchTab('spritegen')">🕹 Sprite Sheet</button>
     </div>
 
-    <!-- ── ART STYLE SELECTOR ── -->
-    <div class="card">
-      <div class="card-label">Art Style <span
-          style="color:var(--text-dim); font-weight:400; font-size:10px; text-transform:none; letter-spacing:0; margin-left:4px;">→
-          auto-selects best model + injects prompt keywords</span></div>
-      <div class="style-grid" id="styleGrid">
-
-        <button class="style-chip" data-style="photorealistic" onclick="selectStyle(this)">
-          <span class="style-icon">📸</span>
-          <span class="style-name">Photorealistic</span>
-          <span class="style-sub">Juggernaut XL</span>
-        </button>
-
-        <button class="style-chip" data-style="portrait" onclick="selectStyle(this)">
-          <span class="style-icon">🧑</span>
-          <span class="style-name">Portrait / Headshot</span>
-          <span class="style-sub">Juggernaut XL</span>
-        </button>
-
-        <button class="style-chip" data-style="anime" onclick="selectStyle(this)">
-          <span class="style-icon">🌸</span>
-          <span class="style-name">Anime</span>
-          <span class="style-sub">Pony Diffusion</span>
-        </button>
-
-        <button class="style-chip" data-style="pixel" onclick="selectStyle(this)">
-          <span class="style-icon">👾</span>
-          <span class="style-name">Pixel Art</span>
-          <span class="style-sub">FLUX + LoRA</span>
-        </button>
-
-        <button class="style-chip" data-style="cartoon" onclick="selectStyle(this)">
-          <span class="style-icon">🎨</span>
-          <span class="style-name">Cartoon / Illustration</span>
-          <span class="style-sub">DreamShaper 8</span>
-        </button>
-
-        <button class="style-chip" data-style="fantasy" onclick="selectStyle(this)">
-          <span class="style-icon">🏰</span>
-          <span class="style-name">Fantasy / RPG</span>
-          <span class="style-sub">AnyLoRA</span>
-        </button>
-
-        <button class="style-chip" data-style="scifi" onclick="selectStyle(this)">
-          <span class="style-icon">🌆</span>
-          <span class="style-name">Sci-Fi / Cyberpunk</span>
-          <span class="style-sub">DreamShaper Lightning</span>
-        </button>
-
-        <button class="style-chip" data-style="3d" onclick="selectStyle(this)">
-          <span class="style-icon">🧊</span>
-          <span class="style-name">3D Render</span>
-          <span class="style-sub">DreamShaper Lightning</span>
-        </button>
-
-        <button class="style-chip" data-style="nsfw" onclick="selectStyle(this)">
-          <span class="style-icon">🔞</span>
-          <span class="style-name">NSFW / Uncensored</span>
-          <span class="style-sub">Pony Diffusion</span>
-        </button>
-
-      </div>
-      <div id="styleKeywordsBar" style="margin-top:10px; display:none;">
-        <span style="font-size:10px; color:var(--text-dim);">Injecting style keywords:</span>
-        <span id="styleKeywordsTags"
-          style="font-size:11px; color:var(--accent); margin-left:6px; font-family:'SF Mono',monospace;"></span>
-        <button onclick="clearStyle()"
-          style="float:right; background:none; border:none; color:var(--text-dim); font-size:11px; cursor:pointer; text-decoration:underline;">✕
-          Clear style</button>
-      </div>
-    </div>
-
-    <!-- ── POSITIVE PROMPT ── -->
-
-    <div class="card prompt-card">
-      <div class="card-label">Prompt</div>
-      <textarea id="promptInput" rows="4"
-        placeholder="Describe your image… (e.g. A cybernetic dwarf engineer in a neon rain-soaked alleyway, cinematic lighting, hyperrealistic)"
-        oninput="updateCharCount()"></textarea>
-      <span class="char-count" id="charCount">0</span>
-    </div>
-
-    <!-- ── NEGATIVE PROMPT ── -->
-    <div class="card prompt-card">
-      <div class="card-label">Negative Prompt</div>
-      <textarea id="negativeInput" rows="2"
-        placeholder="blurry, low quality, ugly, distorted face, extra fingers, watermark, nsfw"
-        oninput="updateNegCount()"></textarea>
-      <span class="char-count" id="negCount">0</span>
-    </div>
-
-    <!-- ── PARAMETERS ── -->
-    <div class="card">
-      <div class="card-label">Parameters</div>
-
-      <!-- Resolution Presets (model-aware) -->
-      <div style="margin-bottom:16px;">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-          <label style="font-size:11px; color:var(--text-muted);">Resolution</label>
-          <span id="minSizePill"
-            style="font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(251,191,36,0.12); color:#fcd34d; border:1px solid rgba(251,191,36,0.2);">Min:
-            512×512</span>
-        </div>
-        <div class="preset-btns" id="presetBtns">
-          <!-- populated by JS via updateResolutionPresets() -->
+    <!-- ── TAB 1: IMAGE GEN ── -->
+    <div id="tab-imagegen" class="tab-content active">
+      <!-- ── MODEL SELECTOR ── -->
+      <div class="card">
+        <div class="card-label">Model</div>
+        <div class="model-grid" id="modelGrid">
+          <button class="model-chip active" data-model="flux" data-type="gguf" onclick="selectModel(this)">
+            FLUX Schnell <span class="badge badge-flux">FLUX</span>
+          </button>
+          <button class="model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
+            onclick="selectModel(this)">
+            Juggernaut XL v9 <span class="badge badge-xl">XL</span>
+          </button>
+          <button class="model-chip" data-model="DreamShaperXL_Lightning.safetensors" data-type="sdxl_lightning"
+            onclick="selectModel(this)">
+            DreamShaper Lightning <span class="badge badge-speed">4-STEP</span>
+          </button>
+          <button class="model-chip" data-model="ponyDiffusionV6XL.safetensors" data-type="sdxl"
+            onclick="selectModel(this)">
+            Pony Diffusion V6 XL <span class="badge badge-xl">XL</span>
+          </button>
+          <button class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15"
+            onclick="selectModel(this)">
+            AnyLoRA <span class="badge badge-15">SD1.5</span>
+          </button>
+          <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
+            onclick="selectModel(this)">
+            DreamShaper 8 <span class="badge badge-15">SD1.5</span>
+          </button>
         </div>
       </div>
 
-      <div class="controls-grid">
-        <!-- Steps -->
-        <div class="control-item">
-          <label>
-            Steps
-            <span class="value-display" id="stepsVal">15</span>
-            <span class="info-trigger" onclick="toggleInfo('stepsInfo')" title="What is this?">ⓘ</span>
-          </label>
-          <input type="range" id="stepsSlider" min="1" max="50" value="15"
-            oninput="document.getElementById('stepsVal').textContent = this.value">
-          <div class="info-tooltip" id="stepsInfo">
-            <strong>Steps</strong> = how many denoising iterations the AI runs.<br><br>
-            <span style="color:var(--success)">More steps</span> → finer detail, longer wait.<br>
-            <span style="color:var(--warning)">Fewer steps</span> → faster, but may look unfinished.<br><br>
-            <em>Recommended per model:</em><br>
-            • FLUX Schnell: <strong>4–8</strong> (baked-in speed)<br>
-            • Lightning: <strong>6–10</strong><br>
-            • SDXL/SD1.5: <strong>20–30</strong><br>
-            • Beyond 50: almost never useful
+      <!-- ── ART STYLE SELECTOR ── -->
+      <div class="card">
+        <div class="card-label">Art Style <span
+            style="color:var(--text-dim); font-weight:400; font-size:10px; text-transform:none; letter-spacing:0; margin-left:4px;">→
+            auto-selects best model + injects prompt keywords</span></div>
+        <div class="style-grid" id="styleGrid">
+
+          <button class="style-chip" data-style="photorealistic" onclick="selectStyle(this)">
+            <span class="style-icon">📸</span>
+            <span class="style-name">Photorealistic</span>
+            <span class="style-sub">Juggernaut XL</span>
+          </button>
+
+          <button class="style-chip" data-style="portrait" onclick="selectStyle(this)">
+            <span class="style-icon">🧑</span>
+            <span class="style-name">Portrait / Headshot</span>
+            <span class="style-sub">Juggernaut XL</span>
+          </button>
+
+          <button class="style-chip" data-style="anime" onclick="selectStyle(this)">
+            <span class="style-icon">🌸</span>
+            <span class="style-name">Anime</span>
+            <span class="style-sub">Pony Diffusion</span>
+          </button>
+
+          <button class="style-chip" data-style="pixel" onclick="selectStyle(this)">
+            <span class="style-icon">👾</span>
+            <span class="style-name">Pixel Art</span>
+            <span class="style-sub">FLUX + LoRA</span>
+          </button>
+
+          <button class="style-chip" data-style="cartoon" onclick="selectStyle(this)">
+            <span class="style-icon">🎨</span>
+            <span class="style-name">Cartoon / Illustration</span>
+            <span class="style-sub">DreamShaper 8</span>
+          </button>
+
+          <button class="style-chip" data-style="fantasy" onclick="selectStyle(this)">
+            <span class="style-icon">🏰</span>
+            <span class="style-name">Fantasy / RPG</span>
+            <span class="style-sub">AnyLoRA</span>
+          </button>
+
+          <button class="style-chip" data-style="scifi" onclick="selectStyle(this)">
+            <span class="style-icon">🌆</span>
+            <span class="style-name">Sci-Fi / Cyberpunk</span>
+            <span class="style-sub">DreamShaper Lightning</span>
+          </button>
+
+          <button class="style-chip" data-style="3d" onclick="selectStyle(this)">
+            <span class="style-icon">🧊</span>
+            <span class="style-name">3D Render</span>
+            <span class="style-sub">DreamShaper Lightning</span>
+          </button>
+
+          <button class="style-chip" data-style="nsfw" onclick="selectStyle(this)">
+            <span class="style-icon">🔞</span>
+            <span class="style-name">NSFW / Uncensored</span>
+            <span class="style-sub">Pony Diffusion</span>
+          </button>
+
+        </div>
+        <div id="styleKeywordsBar" style="margin-top:10px; display:none;">
+          <span style="font-size:10px; color:var(--text-dim);">Injecting style keywords:</span>
+          <span id="styleKeywordsTags"
+            style="font-size:11px; color:var(--accent); margin-left:6px; font-family:'SF Mono',monospace;"></span>
+          <button onclick="clearStyle()"
+            style="float:right; background:none; border:none; color:var(--text-dim); font-size:11px; cursor:pointer; text-decoration:underline;">✕
+            Clear style</button>
+        </div>
+      </div>
+
+      <!-- ── POSITIVE PROMPT ── -->
+
+      <div class="card prompt-card">
+        <div class="card-label">Prompt</div>
+        <textarea id="promptInput" rows="4"
+          placeholder="Describe your image… (e.g. A cybernetic dwarf engineer in a neon rain-soaked alleyway, cinematic lighting, hyperrealistic)"
+          oninput="updateCharCount()"></textarea>
+        <span class="char-count" id="charCount">0</span>
+      </div>
+
+      <!-- ── NEGATIVE PROMPT ── -->
+      <div class="card prompt-card">
+        <div class="card-label">Negative Prompt</div>
+        <textarea id="negativeInput" rows="2"
+          placeholder="blurry, low quality, ugly, distorted face, extra fingers, watermark, nsfw"
+          oninput="updateNegCount()"></textarea>
+        <span class="char-count" id="negCount">0</span>
+      </div>
+
+      <!-- ── PARAMETERS ── -->
+      <div class="card">
+        <div class="card-label">Parameters</div>
+
+        <!-- Resolution Presets (model-aware) -->
+        <div style="margin-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <label style="font-size:11px; color:var(--text-muted);">Resolution</label>
+            <span id="minSizePill"
+              style="font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(251,191,36,0.12); color:#fcd34d; border:1px solid rgba(251,191,36,0.2);">Min:
+              512×512</span>
+          </div>
+          <div class="preset-btns" id="presetBtns">
+            <!-- populated by JS via updateResolutionPresets() -->
           </div>
         </div>
 
-        <!-- CFG Scale -->
-        <div class="control-item">
-          <label>
-            CFG Scale
-            <span class="value-display" id="cfgVal">7.0</span>
-            <span class="info-trigger" onclick="toggleInfo('cfgInfo')" title="What is this?">ⓘ</span>
-          </label>
-          <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7"
-            oninput="document.getElementById('cfgVal').textContent = parseFloat(this.value).toFixed(1)">
-          <div class="info-tooltip" id="cfgInfo">
-            <strong>CFG Scale</strong> = how strictly the AI follows your prompt vs. being creative.<br><br>
-            <span style="color:var(--success)">Higher CFG (7–12)</span> → follows prompt closely, but can
-            over-saturate.<br>
-            <span style="color:var(--warning)">Lower CFG (1–3)</span> → more artistic freedom, prompt loosely
-            followed.<br><br>
-            <em>Recommended per model:</em><br>
-            • FLUX Schnell: <strong>1.0</strong> (architecture ignores CFG)<br>
-            • Lightning: <strong>2–3</strong><br>
-            • SDXL: <strong>6–8</strong><br>
-            • SD 1.5: <strong>7–9</strong>
+        <div class="controls-grid">
+          <!-- Steps -->
+          <div class="control-item">
+            <label>
+              Steps
+              <span class="value-display" id="stepsVal">15</span>
+              <span class="info-trigger" onclick="toggleInfo('stepsInfo')" title="What is this?">ⓘ</span>
+            </label>
+            <input type="range" id="stepsSlider" min="1" max="50" value="15"
+              oninput="document.getElementById('stepsVal').textContent = this.value">
+            <div class="info-tooltip" id="stepsInfo">
+              <strong>Steps</strong> = how many denoising iterations the AI runs.<br><br>
+              <span style="color:var(--success)">More steps</span> → finer detail, longer wait.<br>
+              <span style="color:var(--warning)">Fewer steps</span> → faster, but may look unfinished.<br><br>
+              <em>Recommended per model:</em><br>
+              • FLUX Schnell: <strong>4–8</strong> (baked-in speed)<br>
+              • Lightning: <strong>6–10</strong><br>
+              • SDXL/SD1.5: <strong>20–30</strong><br>
+              • Beyond 50: almost never useful
+            </div>
           </div>
+
+          <!-- CFG Scale -->
+          <div class="control-item">
+            <label>
+              CFG Scale
+              <span class="value-display" id="cfgVal">7.0</span>
+              <span class="info-trigger" onclick="toggleInfo('cfgInfo')" title="What is this?">ⓘ</span>
+            </label>
+            <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7"
+              oninput="document.getElementById('cfgVal').textContent = parseFloat(this.value).toFixed(1)">
+            <div class="info-tooltip" id="cfgInfo">
+              <strong>CFG Scale</strong> = how strictly the AI follows your prompt vs. being creative.<br><br>
+              <span style="color:var(--success)">Higher CFG (7–12)</span> → follows prompt closely, but can
+              over-saturate.<br>
+              <span style="color:var(--warning)">Lower CFG (1–3)</span> → more artistic freedom, prompt loosely
+              followed.<br><br>
+              <em>Recommended per model:</em><br>
+              • FLUX Schnell: <strong>1.0</strong> (architecture ignores CFG)<br>
+              • Lightning: <strong>2–3</strong><br>
+              • SDXL: <strong>6–8</strong><br>
+              • SD 1.5: <strong>7–9</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seed Row -->
+        <div class="seed-row">
+          <label>🎲 Seed</label>
+          <input type="number" id="seedInput" min="0" max="9999999999" value="" placeholder="Random"
+            title="Leave blank for a random seed each time">
+          <button class="icon-btn" onclick="randomizeSeed()" title="Randomize seed">🔀</button>
+          <button class="icon-btn" id="lockSeedBtn" onclick="lockSeed()" title="Lock last used seed">🔒</button>
         </div>
       </div>
 
-      <!-- Seed Row -->
-      <div class="seed-row">
-        <label>🎲 Seed</label>
-        <input type="number" id="seedInput" min="0" max="9999999999" value="" placeholder="Random"
-          title="Leave blank for a random seed each time">
-        <button class="icon-btn" onclick="randomizeSeed()" title="Randomize seed">🔀</button>
-        <button class="icon-btn" id="lockSeedBtn" onclick="lockSeed()" title="Lock last used seed">🔒</button>
-      </div>
-    </div>
-
-    <!-- ── ACTION BUTTONS ── -->
-    <div class="action-row">
-      <button class="btn-generate" id="generateBtn" onclick="generateImage()">✦ Generate Image</button>
-      <button class="btn-download" id="downloadBtn" onclick="downloadImage()" title="Save image">⬇</button>
-    </div>
-
-    <!-- ── STATUS BAR ── -->
-    <div class="status-bar" id="statusBar">
-      <div class="status-dot"></div>
-      <span id="statusText">Ready to generate</span>
-    </div>
-
-    <!-- ── PROGRESS BAR ── -->
-    <div class="progress-container" id="progressContainer">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
-
-    <!-- ── RESULT AREA ── -->
-    <div id="result-container">
-      <div class="empty-state" id="emptyState">
-        <div class="icon">🖼</div>
-        <p>Your generated image will appear here</p>
+      <!-- ── ACTION BUTTONS ── -->
+      <div class="action-row">
+        <button class="btn-generate" id="generateBtn" onclick="generateImage()">✦ Generate Image</button>
+        <button class="btn-download" id="downloadBtn" onclick="downloadImage()" title="Save image">⬇</button>
       </div>
 
-      <div class="loader-wrap" id="loaderWrap">
-        <div class="loader"></div>
-        <div class="loader-label" id="loaderLabel">Warming up ComfyUI...</div>
+      <!-- ── STATUS BAR ── -->
+      <div class="status-bar" id="statusBar">
+        <div class="status-dot"></div>
+        <span id="statusText">Ready to generate</span>
       </div>
 
-      <img id="resultImage" alt="Generated image">
-    </div>
+      <!-- ── PROGRESS BAR ── -->
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
 
-    <!-- ── IMAGE META ── -->
-    <div class="image-meta" id="imageMeta">
-      <span class="meta-pill" id="metaModel">—</span>
-      <span class="meta-pill" id="metaRes">—</span>
-      <span class="meta-pill" id="metaSteps">—</span>
-      <span class="meta-pill" id="metaCfg">—</span>
-      <span class="meta-pill" id="metaSeed">seed: —</span>
-    </div>
+      <!-- ── RESULT AREA ── -->
+      <div id="result-container">
+        <div class="empty-state" id="emptyState">
+          <div class="icon">🖼</div>
+          <p>Your generated image will appear here</p>
+        </div>
+
+        <div class="loader-wrap" id="loaderWrap">
+          <div class="loader"></div>
+          <div class="loader-label" id="loaderLabel">Warming up ComfyUI...</div>
+        </div>
+
+        <img id="resultImage" alt="Generated image">
+      </div>
+
+      <!-- ── IMAGE META ── -->
+      <div class="image-meta" id="imageMeta">
+        <span class="meta-pill" id="metaModel">—</span>
+        <span class="meta-pill" id="metaRes">—</span>
+        <span class="meta-pill" id="metaSteps">—</span>
+        <span class="meta-pill" id="metaCfg">—</span>
+        <span class="meta-pill" id="metaSeed">seed: —</span>
+      </div>
+
+    </div><!-- /tab-imagegen -->
+
+    <!-- ── TAB 2: SPRITE SHEET GENERATOR ── -->
+    <div id="tab-spritegen" class="tab-content">
+      <div class="card">
+        <div class="card-label">Stage 1: Reference Character</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Describe the character you want to
+          animate. A base reference frame will be generated as the foundation for the animation sequence.</p>
+
+        <textarea id="spritePrompt" rows="3"
+          placeholder="A 16-bit cybernetic ninja character, pixel art, standing idle..."></textarea>
+
+        <div style="margin-top:10px;">
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:6px;">Frame Size</label>
+          <div class="preset-btns">
+            <button class="preset-btn" onclick="setSpriteSize(16, this)">16×16</button>
+            <button class="preset-btn" onclick="setSpriteSize(32, this)">32×32</button>
+            <button class="preset-btn" onclick="setSpriteSize(48, this)">48×48</button>
+            <button class="preset-btn active" onclick="setSpriteSize(64, this)">64×64 (Dev Default)</button>
+            <button class="preset-btn" onclick="setSpriteSize(128, this)">128×128 (HD Sprite)</button>
+          </div>
+        </div>
+
+        <button class="btn-generate" id="btnGenRef" onclick="generateSpriteRef()"
+          style="margin-top:16px; padding:10px 16px; font-size:13px;">✦ Generate Reference Frame</button>
+      </div>
+
+      <div id="sprite-ref-container"
+        style="border:1px dashed var(--border); border-radius:var(--radius); min-height:200px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.02); margin-top:16px; position:relative;">
+        <div class="empty-state" id="spriteEmpty">
+          <p>Reference image will appear here</p>
+        </div>
+        <div class="loader-wrap" id="spriteLoaderWrap">
+          <div class="loader"></div>
+        </div>
+        <img id="spriteRefImg" style="display:none; max-width:200px; object-fit:contain; image-rendering:pixelated;" />
+      </div>
+
+      <button id="btnApproveRef" class="btn-generate" disabled
+        style="margin-top:16px; background:linear-gradient(135deg, var(--success), #10b981); opacity:0.5; width:100%; box-shadow:none;">Approve
+        & Continue →</button>
+    </div><!-- /tab-spritegen -->
 
   </div><!-- /app-wrapper -->
 
@@ -1006,6 +1103,14 @@
     // ============================================================
     const TRAFFIC_COP = "http://127.0.0.1:5050";
     const COMFY_API = "127.0.0.1:8188";
+
+    // Tab state
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+      document.getElementById(`btnTab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active');
+    }
 
     const CLIENT_ID = Math.random().toString(36).substring(2, 10);
     let socket = null;
@@ -1523,6 +1628,95 @@
         if (!btn.disabled) generateImage();
       }
     });
+    // ============================================================
+    //  SPRITE SHEET STAGE 1 LOGIC
+    // ============================================================
+    let activeSpriteSize = 64;
+
+    function setSpriteSize(size, btn) {
+      activeSpriteSize = size;
+      const btns = btn.parentElement.querySelectorAll('.preset-btn');
+      btns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    async function generateSpriteRef() {
+      const userPrompt = document.getElementById('spritePrompt').value.trim();
+      if (!userPrompt) {
+        alert('Please describe your character first.');
+        return;
+      }
+
+      // Auto-append pixel art keywords if empty, or use the active style from Tab 1
+      let posKw = activeStyleKw.positive || 'pixel art, 16-bit, retro game sprite, isolated on solid white background, full body';
+      let negKw = activeStyleKw.negative || 'photorealistic, blurry, noise, 3d, realistic, background details';
+
+      const positivePrompt = `${userPrompt}, ${posKw}`;
+      const negativePrompt = negKw;
+
+      const btn = document.getElementById('btnGenRef');
+      btn.disabled = true;
+      btn.textContent = '⏳ Generating Reference…';
+
+      document.getElementById('spriteRefImg').style.display = 'none';
+      document.getElementById('spriteEmpty').style.display = 'none';
+      document.getElementById('spriteLoaderWrap').classList.add('visible');
+      document.getElementById('btnApproveRef').disabled = true;
+      document.getElementById('btnApproveRef').style.opacity = '0.5';
+
+      try {
+        // SD 1.5 is default for sprites, but we use active model (probably FLUX or SD1.5)
+        let steps = 4;
+        let cfg = 2.0;
+
+        if (activeModelType === 'sd15' || activeModelType === 'sdxl') {
+          steps = 20;
+          cfg = 7.0;
+        } else if (activeModelType === 'sdxl_lightning') {
+          steps = 4;
+          cfg = 2.0;
+        }
+
+        const workflowData = buildWorkflow(
+          activeModel,
+          activeModelType,
+          positivePrompt,
+          negativePrompt,
+          activeSpriteSize, // Width
+          activeSpriteSize, // Height
+          Math.floor(Math.random() * 9999999999), // Always random seed for reference
+          steps,
+          cfg
+        );
+
+        const res = await fetch(`http://${COMFY_API}/prompt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
+        });
+
+        if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
+        const data = await res.json();
+
+        const filename = await pollHistory(data.prompt_id);
+
+        const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        document.getElementById('spriteRefImg').src = imgUrl;
+        document.getElementById('spriteRefImg').style.display = 'block';
+
+        // Setup approval button (Phase 2 entry point)
+        document.getElementById('btnApproveRef').disabled = false;
+        document.getElementById('btnApproveRef').style.opacity = '1';
+
+      } catch (err) {
+        alert(err.message);
+        document.getElementById('spriteEmpty').style.display = 'block';
+      } finally {
+        document.getElementById('spriteLoaderWrap').classList.remove('visible');
+        btn.disabled = false;
+        btn.textContent = '✦ Generate Reference Frame';
+      }
+    }
   </script>
 </body>
 

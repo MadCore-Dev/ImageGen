@@ -177,12 +177,12 @@ Tab 1 and Tab 2 are separate `<div>` sections toggled by JS. Shared ComfyUI API 
 ## Phased Build Plan
 
 ### ✅ Phase 0 (DONE)
-- Base ImageGen UI with model selector, style chips, controls
+- [x] Base ImageGen UI with model selector, style chips, controls
 
-### 📋 Phase 1 — Sprite Tab Shell
-- [ ] Add tab switcher UI (Tab 1: Image Gen / Tab 2: Sprite Sheet)
-- [ ] Create Stage 1 UI (reference character prompt, size selector 16–128px, generate button)
-- [ ] Wire Stage 1 to existing ComfyUI txt2img workflow with pixel art style
+### 📋 Phase 1 — Sprite Tab Shell (DONE)
+- [x] Add tab switcher UI (Tab 1: Image Gen / Tab 2: Sprite Sheet)
+- [x] Create Stage 1 UI (reference character prompt, size selector 16–128px, generate button)
+- [x] Wire Stage 1 to existing ComfyUI txt2img workflow with pixel art style
 
 ### 📋 Phase 2 — Animation Configurator
 - [ ] Animation preset picker (Idle, Walk, Run, Attack, Jump, Hurt, Death, Cast)
