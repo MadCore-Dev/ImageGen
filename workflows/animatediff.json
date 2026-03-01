@@ -99,8 +99,9 @@
         "inputs": {
             "frame_rate": 8,
             "loop_count": 0,
-            "filename_prefix": "animatediff",
+            "filename_prefix": "AnimateDiff",
             "format": "image/gif",
+            "pingpong": false,
             "save_output": true,
             "images": [
                 "8",
@@ -111,10 +112,9 @@
     "10": {
         "class_type": "ADE_LoopedUniformContextOptions",
         "inputs": {
-            "request_n_frames": 16,
-            "length": 16,
-            "stride": 1,
-            "overlap": 4,
+            "context_length": 16,
+            "context_stride": 1,
+            "context_overlap": 4,
             "closed_loop": false
         }
     }
