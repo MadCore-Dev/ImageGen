@@ -3,277 +3,1122 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Epoch: Offline Image Gen</title>
   <style>
+    /* ============================================================
+       DESIGN TOKENS
+    ============================================================ */
+    :root {
+      --bg-deep: #0d0d0f;
+      --bg-card: rgba(255, 255, 255, 0.04);
+      --bg-card-hover: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.1);
+      --border-focus: #4f8fff;
+      --text-primary: #f0f0f5;
+      --text-muted: #8b8b9a;
+      --text-dim: #555565;
+      --accent: #4f8fff;
+      --accent-glow: rgba(79, 143, 255, 0.25);
+      --accent-2: #a855f7;
+      --success: #34d399;
+      --error: #f87171;
+      --warning: #fbbf24;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: 0.2s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica;
-      background: #1a1a1a;
-      color: #fff;
-      padding: 40px;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    .container {
-      max-width: 800px;
+    /* ============================================================
+       BACKGROUND GRADIENT
+    ============================================================ */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 0%, rgba(79, 143, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ============================================================
+       LAYOUT
+    ============================================================ */
+    .app-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
       margin: 0 auto;
-      text-align: center;
+      padding: 32px 20px 60px;
     }
 
+    /* ============================================================
+       HEADER
+    ============================================================ */
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    header p.subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
+       CARDS / GLASS PANELS
+    ============================================================ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      margin-bottom: 16px;
+      transition: border-color var(--transition);
+    }
+
+    .card:focus-within {
+      border-color: rgba(79, 143, 255, 0.4);
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ============================================================
+       MODEL SELECTOR
+    ============================================================ */
+    .model-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .model-chip {
+      padding: 7px 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+
+    .model-chip:hover {
+      background: rgba(79, 143, 255, 0.12);
+      color: #aac4ff;
+      border-color: rgba(79, 143, 255, 0.3);
+    }
+
+    .model-chip.active {
+      background: rgba(79, 143, 255, 0.2);
+      color: #a8c5ff;
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .model-chip .badge {
+      display: inline-block;
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    .badge-flux {
+      background: rgba(168, 85, 247, 0.25);
+      color: #c084fc;
+    }
+
+    .badge-xl {
+      background: rgba(79, 143, 255, 0.2);
+      color: #93c5fd;
+    }
+
+    .badge-15 {
+      background: rgba(52, 211, 153, 0.15);
+      color: #6ee7b7;
+    }
+
+    .badge-speed {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fcd34d;
+    }
+
+    /* ============================================================
+       PROMPTS
+    ============================================================ */
     textarea {
       width: 100%;
-      height: 100px;
-      background: #2d2d2d;
-      color: #fff;
-      border: 1px solid #444;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 16px;
+      background: transparent;
+      color: var(--text-primary);
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 14px;
+      line-height: 1.6;
+      font-family: inherit;
+      padding: 0;
+    }
+
+    textarea::placeholder {
+      color: var(--text-dim);
+    }
+
+    .prompt-card {
+      position: relative;
+    }
+
+    .prompt-card .char-count {
+      position: absolute;
+      bottom: 8px;
+      right: 14px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* ============================================================
+       CONTROLS ROW
+    ============================================================ */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .control-item label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .control-item input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .control-item input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+
+    .control-item .value-display {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: right;
+      float: right;
+    }
+
+    /* ============================================================
+       PRESET BUTTONS (resolution)
+    ============================================================ */
+    .preset-btns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      padding: 5px 11px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .preset-btn:hover {
+      background: rgba(79, 143, 255, 0.1);
+      color: #aac4ff;
+      border-color: rgba(79, 143, 255, 0.3);
+    }
+
+    .preset-btn.active {
+      background: rgba(79, 143, 255, 0.18);
+      color: #93c5fd;
+      border-color: var(--accent);
+    }
+
+    /* ============================================================
+       SEED ROW
+    ============================================================ */
+    .seed-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .seed-row label {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .seed-row input[type="number"] {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      transition: border var(--transition);
+    }
+
+    .seed-row input[type="number"]:focus {
+      border-color: var(--border-focus);
+    }
+
+    .icon-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .icon-btn:hover {
+      background: rgba(79, 143, 255, 0.1);
+      color: var(--accent);
+      border-color: rgba(79, 143, 255, 0.3);
+    }
+
+    /* ============================================================
+       ACTION BUTTONS
+    ============================================================ */
+    .action-row {
+      display: flex;
+      gap: 10px;
       margin-bottom: 20px;
     }
 
-    .controls {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-bottom: 30px;
-    }
-
-    button {
-      padding: 12px 24px;
-      border-radius: 6px;
+    .btn-generate {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: var(--radius);
       border: none;
-      font-weight: bold;
+      font-weight: 700;
+      font-size: 15px;
       cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .btn-gen {
-      background: #007aff;
+      background: linear-gradient(135deg, var(--accent), #6b9fff);
       color: white;
+      letter-spacing: 0.02em;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--transition);
+      box-shadow: 0 4px 20px rgba(79, 143, 255, 0.3);
     }
 
-    .btn-gen:disabled {
-      background: #444;
+    .btn-generate::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .btn-generate:hover::before {
+      opacity: 1;
+    }
+
+    .btn-generate:active {
+      transform: scale(0.99);
+    }
+
+    .btn-generate:disabled {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-dim);
       cursor: not-allowed;
+      box-shadow: none;
     }
 
-    #status {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #aaa;
+    .btn-download {
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: none;
     }
 
-    #result-container {
-      margin-top: 20px;
-      border: 2px dashed #444;
-      border-radius: 12px;
-      min-height: 400px;
+    .btn-download:hover {
+      background: rgba(52, 211, 153, 0.1);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .btn-download.visible {
+      display: block;
+    }
+
+    /* ============================================================
+       STATUS BAR
+    ============================================================ */
+    .status-bar {
       display: flex;
       align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    img {
-      max-width: 100%;
+      gap: 10px;
+      padding: 10px 14px;
       border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
     }
 
+    .status-bar.active {
+      border-color: rgba(79, 143, 255, 0.3);
+      color: #93c5fd;
+    }
+
+    .status-bar.success {
+      border-color: rgba(52, 211, 153, 0.3);
+      color: var(--success);
+    }
+
+    .status-bar.error {
+      border-color: rgba(248, 113, 113, 0.3);
+      color: var(--error);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .status-bar.active .status-dot {
+      background: var(--accent);
+      animation: pulse-dot 1.2s ease-in-out infinite;
+    }
+
+    .status-bar.success .status-dot {
+      background: var(--success);
+    }
+
+    .status-bar.error .status-dot {
+      background: var(--error);
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    /* ============================================================
+       PROGRESS BAR
+    ============================================================ */
     .progress-container {
       width: 100%;
-      height: 24px;
-      background: #333;
-      border-radius: 12px;
-      margin: 20px 0;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 5px;
+      margin-bottom: 16px;
       overflow: hidden;
       display: none;
-      border: 1px solid #444;
-      position: relative;
+    }
+
+    .progress-container.visible {
+      display: block;
     }
 
     .progress-bar {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #007aff, #00c6ff);
-      transition: width 0.3s ease;
-      box-shadow: 0 0 10px rgba(0, 122, 255, 0.5);
+      background: linear-gradient(90deg, var(--accent), #c084fc);
+      border-radius: 5px;
+      transition: width 0.4s ease;
     }
 
-    .progress-text {
-      position: absolute;
-      width: 100%;
+    /* ============================================================
+       RESULT IMAGE AREA
+    ============================================================ */
+    #result-container {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      background: rgba(255, 255, 255, 0.02);
+      transition: border-color 0.3s;
+    }
+
+    #result-container.has-image {
+      border-style: solid;
+      border-color: rgba(79, 143, 255, 0.2);
+    }
+
+    .empty-state {
       text-align: center;
-      line-height: 24px;
-      font-size: 12px;
-      color: #fff;
-      font-weight: bold;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      padding: 40px;
+    }
+
+    .empty-state .icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.3;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* ============================================================
+       LOADER SPINNER (BUG FIX)
+    ============================================================ */
+    .loader-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+      display: none;
+    }
+
+    .loader-wrap.visible {
+      display: flex;
+    }
+
+    .loader {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(255, 255, 255, 0.08);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom: 14px;
     }
 
     @keyframes spin {
-      0% {
-        transform: rotate(0deg);
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loader-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    #resultImage {
+      max-width: 100%;
+      max-height: 700px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    /* ============================================================
+       IMAGE META
+    ============================================================ */
+    .image-meta {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 0 0;
+    }
+
+    .image-meta.visible {
+      display: flex;
+    }
+
+    .meta-pill {
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'SF Mono', monospace;
+    }
+
+    /* ============================================================
+       SCROLLBAR
+    ============================================================ */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 600px) {
+      .controls-grid {
+        grid-template-columns: 1fr 1fr;
       }
 
-      100% {
-        transform: rotate(360deg);
+      .app-wrapper {
+        padding: 20px 14px 40px;
+      }
+
+      header h1 {
+        font-size: 20px;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>Project Epoch: Offline Image Generation Tool</h1>
-    <textarea id="promptInput" placeholder="Describe your image... (e.g. A cybernetic dwarf explorer investigating a neon city alleyway)"></textarea>
+  <div class="app-wrapper">
+    <header>
+      <h1>🎨 Project Epoch</h1>
+      <p class="subtitle">Fully offline image generation powered by ComfyUI & your local models</p>
+    </header>
 
-    <div class="controls">
-      <button class="btn-gen" id="generateBtn" onclick="generateImage()">Generate Image</button>
+    <!-- ── MODEL SELECTOR ── -->
+    <div class="card">
+      <div class="card-label">Model</div>
+      <div class="model-grid" id="modelGrid">
+        <button class="model-chip active" data-model="flux" data-type="gguf" onclick="selectModel(this)">
+          FLUX Schnell <span class="badge badge-flux">FLUX</span>
+        </button>
+        <button class="model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
+          onclick="selectModel(this)">
+          Juggernaut XL v9 <span class="badge badge-xl">XL</span>
+        </button>
+        <button class="model-chip" data-model="DreamShaperXL_Lightning.safetensors" data-type="sdxl_lightning"
+          onclick="selectModel(this)">
+          DreamShaper Lightning <span class="badge badge-speed">4-STEP</span>
+        </button>
+        <button class="model-chip" data-model="ponyDiffusionV6XL.safetensors" data-type="sdxl"
+          onclick="selectModel(this)">
+          Pony Diffusion V6 XL <span class="badge badge-xl">XL</span>
+        </button>
+        <button class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15"
+          onclick="selectModel(this)">
+          AnyLoRA <span class="badge badge-15">SD1.5</span>
+        </button>
+        <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
+          onclick="selectModel(this)">
+          DreamShaper 8 <span class="badge badge-15">SD1.5</span>
+        </button>
+      </div>
     </div>
 
-    <div id="status">System Idle</div>
+    <!-- ── POSITIVE PROMPT ── -->
+    <div class="card prompt-card">
+      <div class="card-label">Prompt</div>
+      <textarea id="promptInput" rows="4"
+        placeholder="Describe your image… (e.g. A cybernetic dwarf engineer in a neon rain-soaked alleyway, cinematic lighting, hyperrealistic)"
+        oninput="updateCharCount()"></textarea>
+      <span class="char-count" id="charCount">0</span>
+    </div>
 
+    <!-- ── NEGATIVE PROMPT ── -->
+    <div class="card prompt-card">
+      <div class="card-label">Negative Prompt</div>
+      <textarea id="negativeInput" rows="2"
+        placeholder="blurry, low quality, ugly, distorted face, extra fingers, watermark, nsfw"
+        oninput="updateNegCount()"></textarea>
+      <span class="char-count" id="negCount">0</span>
+    </div>
+
+    <!-- ── PARAMETERS ── -->
+    <div class="card">
+      <div class="card-label">Parameters</div>
+
+      <!-- Resolution Presets -->
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:8px;">Resolution</label>
+        <div class="preset-btns">
+          <button class="preset-btn active" onclick="setPreset(512,512,this)">512×512</button>
+          <button class="preset-btn" onclick="setPreset(768,512,this)">768×512 (Land)</button>
+          <button class="preset-btn" onclick="setPreset(512,768,this)">512×768 (Port)</button>
+          <button class="preset-btn" onclick="setPreset(1024,1024,this)">1024×1024 (XL)</button>
+          <button class="preset-btn" onclick="setPreset(1024,576,this)">1024×576 (Cinema)</button>
+        </div>
+      </div>
+
+      <div class="controls-grid">
+        <!-- Steps -->
+        <div class="control-item">
+          <label>Steps <span class="value-display" id="stepsVal">15</span></label>
+          <input type="range" id="stepsSlider" min="1" max="50" value="15"
+            oninput="document.getElementById('stepsVal').textContent = this.value">
+        </div>
+
+        <!-- CFG Scale -->
+        <div class="control-item">
+          <label>CFG Scale <span class="value-display" id="cfgVal">7.0</span></label>
+          <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7"
+            oninput="document.getElementById('cfgVal').textContent = parseFloat(this.value).toFixed(1)">
+        </div>
+      </div>
+
+      <!-- Seed Row -->
+      <div class="seed-row">
+        <label>🎲 Seed</label>
+        <input type="number" id="seedInput" min="0" max="9999999999" value="" placeholder="Random"
+          title="Leave blank for a random seed each time">
+        <button class="icon-btn" onclick="randomizeSeed()" title="Randomize seed">🔀</button>
+        <button class="icon-btn" id="lockSeedBtn" onclick="lockSeed()" title="Lock last used seed">🔒</button>
+      </div>
+    </div>
+
+    <!-- ── ACTION BUTTONS ── -->
+    <div class="action-row">
+      <button class="btn-generate" id="generateBtn" onclick="generateImage()">✦ Generate Image</button>
+      <button class="btn-download" id="downloadBtn" onclick="downloadImage()" title="Save image">⬇</button>
+    </div>
+
+    <!-- ── STATUS BAR ── -->
+    <div class="status-bar" id="statusBar">
+      <div class="status-dot"></div>
+      <span id="statusText">Ready to generate</span>
+    </div>
+
+    <!-- ── PROGRESS BAR ── -->
     <div class="progress-container" id="progressContainer">
       <div class="progress-bar" id="progressBar"></div>
-      <div class="progress-text" id="progressText">0%</div>
     </div>
 
+    <!-- ── RESULT AREA ── -->
     <div id="result-container">
-      <div id="loading" style="display:none;">
-        <div class="loader"></div>
+      <div class="empty-state" id="emptyState">
+        <div class="icon">🖼</div>
+        <p>Your generated image will appear here</p>
       </div>
-      <img id="resultImage" style="display:none;" src="">
+
+      <div class="loader-wrap" id="loaderWrap">
+        <div class="loader"></div>
+        <div class="loader-label" id="loaderLabel">Warming up ComfyUI...</div>
+      </div>
+
+      <img id="resultImage" alt="Generated image">
     </div>
-  </div>
+
+    <!-- ── IMAGE META ── -->
+    <div class="image-meta" id="imageMeta">
+      <span class="meta-pill" id="metaModel">—</span>
+      <span class="meta-pill" id="metaRes">—</span>
+      <span class="meta-pill" id="metaSteps">—</span>
+      <span class="meta-pill" id="metaCfg">—</span>
+      <span class="meta-pill" id="metaSeed">seed: —</span>
+    </div>
+
+  </div><!-- /app-wrapper -->
 
   <script>
+    // ============================================================
+    //  CONSTANTS & STATE
+    // ============================================================
     const TRAFFIC_COP = "http://127.0.0.1:5050";
-    const COMFY_API = "127.0.0.1:8188"; // Host only for WS
+    const COMFY_API = "127.0.0.1:8188";
+
     const CLIENT_ID = Math.random().toString(36).substring(2, 10);
     let socket = null;
+    let wsRetries = 0;
+    const WS_MAX_RETRIES = 5;
 
+    let lastSeed = null;
+    let lastFilename = null;
+
+    let selectedModel = { name: 'flux', type: 'gguf' };
+    let imgWidth = 512;
+    let imgHeight = 512;
+
+    // ============================================================
+    //  MODEL SELECTION
+    // ============================================================
+    function selectModel(chip) {
+      document.querySelectorAll('.model-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedModel = { name: chip.dataset.model, type: chip.dataset.type };
+
+      // Auto-adjust recommended defaults per model type
+      const stepsSlider = document.getElementById('stepsSlider');
+      const cfgSlider = document.getElementById('cfgSlider');
+
+      if (chip.dataset.type === 'gguf') {
+        stepsSlider.value = 4; document.getElementById('stepsVal').textContent = '4';
+        cfgSlider.value = 1; document.getElementById('cfgVal').textContent = '1.0';
+      } else if (chip.dataset.type === 'sdxl_lightning') {
+        stepsSlider.value = 6; document.getElementById('stepsVal').textContent = '6';
+        cfgSlider.value = 2; document.getElementById('cfgVal').textContent = '2.0';
+      } else if (chip.dataset.type === 'sdxl') {
+        stepsSlider.value = 25; document.getElementById('stepsVal').textContent = '25';
+        cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
+      } else {
+        // sd15
+        stepsSlider.value = 20; document.getElementById('stepsVal').textContent = '20';
+        cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
+      }
+    }
+
+    // ============================================================
+    //  RESOLUTION PRESETS
+    // ============================================================
+    function setPreset(w, h, btn) {
+      imgWidth = w;
+      imgHeight = h;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    // ============================================================
+    //  SEED CONTROLS
+    // ============================================================
+    function randomizeSeed() {
+      document.getElementById('seedInput').value = '';
+      document.getElementById('seedInput').placeholder = 'Random';
+    }
+
+    function lockSeed() {
+      if (lastSeed !== null) {
+        document.getElementById('seedInput').value = lastSeed;
+      } else {
+        setStatus('No seed yet — generate first!', 'error');
+      }
+    }
+
+    // ============================================================
+    //  CHAR COUNT
+    // ============================================================
+    function updateCharCount() {
+      const v = document.getElementById('promptInput').value.length;
+      document.getElementById('charCount').textContent = v;
+    }
+    function updateNegCount() {
+      const v = document.getElementById('negativeInput').value.length;
+      document.getElementById('negCount').textContent = v;
+    }
+
+    // ============================================================
+    //  STATUS + PROGRESS
+    // ============================================================
+    function setStatus(msg, state = 'idle') {
+      const bar = document.getElementById('statusBar');
+      const text = document.getElementById('statusText');
+      bar.className = 'status-bar ' + state;
+      text.textContent = msg;
+    }
+
+    function setProgress(pc) {
+      const bar = document.getElementById('progressBar');
+      bar.style.width = `${pc}%`;
+    }
+
+    function showProgress(visible) {
+      document.getElementById('progressContainer').classList.toggle('visible', visible);
+      if (!visible) setProgress(0);
+    }
+
+    // ============================================================
+    //  WEBSOCKET (bug fix: max retries + exponential backoff)
+    // ============================================================
     function initWebSocket() {
-      if (socket) return;
+      if (socket && socket.readyState === WebSocket.OPEN) return;
+      if (wsRetries >= WS_MAX_RETRIES) {
+        console.warn('WebSocket max retries reached. WS progress updates disabled.');
+        return;
+      }
+
       socket = new WebSocket(`ws://${COMFY_API}/ws?clientId=${CLIENT_ID}`);
 
+      socket.onopen = () => { wsRetries = 0; };
+
       socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'progress') {
-          const { value, max } = data.data;
-          const pc = Math.round((value / max) * 100);
-          updateProgress(pc);
-        } else if (data.type === 'executing') {
-          if (data.data.node) {
-            updateStatus(`🎨 Running Node: ${data.data.node}...`);
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'progress') {
+            const { value, max } = data.data;
+            const pc = Math.round((value / max) * 100);
+            setProgress(pc);
+          } else if (data.type === 'executing' && data.data.node) {
+            document.getElementById('loaderLabel').textContent = `Running node ${data.data.node}…`;
           }
-        }
+        } catch (_) { }
       };
 
       socket.onclose = () => {
-        console.log("WebSocket closed. Reconnecting...");
         socket = null;
-        setTimeout(initWebSocket, 2000);
+        wsRetries++;
+        if (wsRetries < WS_MAX_RETRIES) {
+          const delay = Math.min(2000 * wsRetries, 10000);
+          setTimeout(initWebSocket, delay);
+        }
       };
     }
 
-    function updateProgress(pc) {
-      const container = document.getElementById('progressContainer');
-      const bar = document.getElementById('progressBar');
-      const text = document.getElementById('progressText');
-      container.style.display = 'block';
-      bar.style.width = `${pc}%`;
-      text.innerText = `${pc}%`;
+    // ============================================================
+    //  WORKFLOW BUILDERS (model-aware routing)
+    // ============================================================
+    function buildWorkflow(positivePrompt, negativePrompt) {
+      const type = selectedModel.type;
+      const model = selectedModel.name;
+      const seed = parseInt(document.getElementById('seedInput').value) ||
+        Math.floor(Math.random() * 1000000000);
+      const steps = parseInt(document.getElementById('stepsSlider').value);
+      const cfg = parseFloat(document.getElementById('cfgSlider').value);
+
+      lastSeed = seed;
+
+      if (type === 'gguf') {
+        // FLUX GGUF workflow
+        return {
+          "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": "flux1-schnell-Q4_K_S.gguf" } },
+          "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": "t5xxl_fp8_e4m3fn.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux" } },
+          "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_vae.safetensors" } },
+          "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["2", 0] } },
+          "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
+          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": imgWidth, "height": imgHeight, "batch_size": 1 } },
+          "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
+          "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
+          "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_gen", "images": ["7", 0] } }
+        };
+      } else {
+        // Standard checkpoint (SD 1.5 / SDXL / Lightning)
+        const vae = (type === 'sdxl' || type === 'sdxl_lightning') ? 'flux_vae.safetensors' : 'vae-ft-mse-840000-ema-pruned.safetensors';
+        const sampler = type === 'sdxl_lightning' ? 'dpm_2' : 'euler_a';
+        const scheduler = type === 'sdxl_lightning' ? 'sgm_uniform' : 'karras';
+
+        return {
+          "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": model } },
+          "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["1", 1] } },
+          "9": { "class_type": "CLIPTextEncode", "inputs": { "text": negativePrompt, "clip": ["1", 1] } },
+          "3": { "class_type": "VAELoader", "inputs": { "vae_name": vae } },
+          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": imgWidth, "height": imgHeight, "batch_size": 1 } },
+          "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler, "scheduler": scheduler, "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
+          "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
+          "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_gen", "images": ["7", 0] } }
+        };
+      }
     }
 
-    async function updateStatus(msg) {
-      document.getElementById('status').innerText = msg;
+    // ============================================================
+    //  POLL HISTORY (bug fix: max timeout 3 minutes)
+    // ============================================================
+    async function pollHistory(prompt_id) {
+      const deadline = Date.now() + 3 * 60 * 1000;
+      while (Date.now() < deadline) {
+        const res = await fetch(`http://${COMFY_API}/history/${prompt_id}`);
+        const history = await res.json();
+        if (history[prompt_id]) {
+          const outputs = history[prompt_id].outputs;
+          const nodeKey = Object.keys(outputs).find(k => outputs[k].images);
+          if (nodeKey) return outputs[nodeKey].images[0].filename;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      throw new Error("Generation timed out after 3 minutes. Is ComfyUI still running?");
     }
 
+    // ============================================================
+    //  MAIN GENERATE FUNCTION
+    // ============================================================
     async function generateImage() {
-      const promptText = document.getElementById('promptInput').value;
-      const btn = document.getElementById('generateBtn');
-      const loader = document.getElementById('loading');
-      const img = document.getElementById('resultImage');
+      const positivePrompt = document.getElementById('promptInput').value.trim();
+      const negativePrompt = document.getElementById('negativeInput').value.trim();
 
-      if (!promptText) return alert("Please enter a prompt.");
+      if (!positivePrompt) {
+        setStatus('Please enter a prompt first.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Generating…';
 
       // Reset UI
-      btn.disabled = true;
-      const originalBtnText = btn.innerText;
-      btn.innerText = "⏳ Generating Asset...";
-      
-      loader.style.display = 'block';
-      img.style.display = 'none';
-      document.getElementById('progressContainer').style.display = 'none';
-      updateProgress(0);
-      updateStatus("🚦 Contacting Traffic Cop: Preparing Hardware...");
+      document.getElementById('resultImage').style.display = 'none';
+      document.getElementById('resultImage').src = '';
+      document.getElementById('result-container').classList.remove('has-image');
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('downloadBtn').classList.remove('visible');
+      document.getElementById('imageMeta').classList.remove('visible');
+      document.getElementById('loaderWrap').classList.add('visible');
+      document.getElementById('loaderLabel').textContent = 'Contacting Traffic Cop…';
+      showProgress(true);
+      setProgress(0);
+      setStatus('🚦 Contacting Traffic Cop: Preparing hardware…', 'active');
 
       initWebSocket();
 
       try {
-        // 1. Handshake with Traffic Cop to ensure ComfyUI is up and Ollama is out
-        const copResponse = await fetch(`${TRAFFIC_COP}/comfyui/start`, { method: 'POST' });
-        const copData = await copResponse.json();
+        // 1. Wake up ComfyUI via Traffic Cop
+        const copRes = await fetch(`${TRAFFIC_COP}/comfyui/start`, { method: 'POST' });
+        const copData = await copRes.json();
+        if (copData.status !== 'success') {
+          throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);
+        }
 
-        if (copData.status !== "success") throw new Error("Traffic Cop failed to start ComfyUI");
-        updateStatus("🎨 ComfyUI Ready: Constructing FLUX Workflow...");
+        setStatus(`🎨 ComfyUI Ready. Queuing ${selectedModel.name.replace('.safetensors', '')} workflow…`, 'active');
+        document.getElementById('loaderLabel').textContent = 'Queueing prompt...';
 
-        // 2. Prepare the FLUX GGUF JSON (Using the exact blueprint we tested)
-        const workflow = getFluxWorkflow(promptText);
+        // 2. Build model-aware workflow
+        const workflow = buildWorkflow(positivePrompt, negativePrompt);
 
-        // 3. Queue the Prompt
+        // 3. Queue the prompt
         const queueRes = await fetch(`http://${COMFY_API}/prompt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: workflow, client_id: CLIENT_ID })
         });
+        if (!queueRes.ok) throw new Error(`Queue failed (HTTP ${queueRes.status}).`);
         const { prompt_id } = await queueRes.json();
-        updateStatus(`⏳ Generation in progress (ID: ${prompt_id.slice(0, 8)})...`);
+        setStatus(`⏳ In queue (${prompt_id.slice(0, 8)})… Node progress shown in bar above`, 'active');
 
-        // 4. Poll for results
+        // 4. Poll for result (timeout-protected)
         const filename = await pollHistory(prompt_id);
-        updateStatus("✅ Asset Generated! Fetching image...");
+        lastFilename = filename;
 
-        // 5. Display Image
-        img.src = `http://${COMFY_API}/view?filename=${filename}&type=output`;
-        img.style.display = 'block';
-        loader.style.display = 'none';
-        document.getElementById('progressContainer').style.display = 'none';
-        updateStatus("Ready for next asset.");
+        setStatus('✅ Image ready!', 'success');
+        document.getElementById('loaderLabel').textContent = 'Fetching image…';
+
+        // 5. Display image
+        const imgEl = document.getElementById('resultImage');
+        imgEl.onload = () => {
+          document.getElementById('loaderWrap').classList.remove('visible');
+          imgEl.style.display = 'block';
+          document.getElementById('result-container').classList.add('has-image');
+          document.getElementById('emptyState').style.display = 'none';
+          showProgress(false);
+          document.getElementById('downloadBtn').classList.add('visible');
+          updateImageMeta();
+        };
+        imgEl.onerror = () => {
+          setStatus('❌ Image loaded but could not be displayed. Check ComfyUI output folder.', 'error');
+          document.getElementById('loaderWrap').classList.remove('visible');
+        };
+        imgEl.src = `http://${COMFY_API}/view?filename=${filename}&type=output`;
 
       } catch (err) {
         console.error(err);
-        updateStatus("❌ Error: " + err.message);
+        setStatus(`❌ ${err.message}`, 'error');
+        document.getElementById('loaderWrap').classList.remove('visible');
+        document.getElementById('emptyState').style.display = '';
+        showProgress(false);
       } finally {
         btn.disabled = false;
-        btn.innerText = "Generate Image";
+        btn.textContent = '✦ Generate Image';
       }
     }
 
-    // --- Helper: FLUX Workflow Construction ---
-    function getFluxWorkflow(userPrompt) {
-      return {
-        "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": "flux1-schnell-Q4_K_S.gguf" } },
-        "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": "t5xxl_fp8_e4m3fn.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux" } },
-        "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_vae.safetensors" } },
-        "4": { "class_type": "CLIPTextEncode", "inputs": { "text": userPrompt, "clip": ["2", 0] } },
-        "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
-        "5": { "class_type": "EmptyLatentImage", "inputs": { "width": 512, "height": 512, "batch_size": 1 } },
-        "6": { "class_type": "KSampler", "inputs": { "seed": Math.floor(Math.random() * 1000000), "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
-        "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
-        "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "web_gen", "images": ["7", 0] } }
-      };
+    // ============================================================
+    //  IMAGE META UPDATE
+    // ============================================================
+    function updateImageMeta() {
+      document.getElementById('metaModel').textContent = selectedModel.name.replace('.safetensors', '').replace('flux', 'FLUX Schnell');
+      document.getElementById('metaRes').textContent = `${imgWidth}×${imgHeight}`;
+      document.getElementById('metaSteps').textContent = `${document.getElementById('stepsSlider').value} steps`;
+      document.getElementById('metaCfg').textContent = `CFG ${parseFloat(document.getElementById('cfgSlider').value).toFixed(1)}`;
+      document.getElementById('metaSeed').textContent = `seed: ${lastSeed}`;
+      document.getElementById('imageMeta').classList.add('visible');
     }
 
-    async function pollHistory(prompt_id) {
-      while (true) {
-        const res = await fetch(`http://${COMFY_API}/history/${prompt_id}`);
-        const history = await res.json();
-        if (history[prompt_id]) {
-          return history[prompt_id].outputs["8"].images[0].filename;
-        }
-        await new Promise(r => setTimeout(r, 3000));
-      }
+    // ============================================================
+    //  DOWNLOAD
+    // ============================================================
+    function downloadImage() {
+      if (!lastFilename) return;
+      const link = document.createElement('a');
+      link.href = `http://${COMFY_API}/view?filename=${lastFilename}&type=output`;
+      link.download = `epoch_${lastSeed || Date.now()}.png`;
+      link.click();
     }
+
+    // ============================================================
+    //  KEYBOARD SHORTCUT: Cmd/Ctrl+Enter to generate
+    // ============================================================
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        const btn = document.getElementById('generateBtn');
+        if (!btn.disabled) generateImage();
+      }
+    });
   </script>
 </body>
 
