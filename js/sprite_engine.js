@@ -571,6 +571,148 @@ export async function startAnimationQueue() {
 }
 
 // ============================================================
+//  RESUME ANIMATION QUEUE (Session Recovery)
+// ============================================================
+export async function resumeAnimationQueue({ s, rowStatuses }) {
+    const selectedAnims = s.selectedAnimations || [];
+    const framesCount = s.framesCount || 8;
+    const denoise = s.denoise || 0.35;
+    const basePositivePrompt = s.basePositivePrompt || '';
+    const baseNegativePrompt = s.baseNegativePrompt || '';
+    const completedFrames = s.completedFrames || {};
+
+    _generationAbortController = new AbortController();
+    const abortSignal = _generationAbortController.signal;
+    cancelGenerationFlag = false;
+
+    const btn = document.getElementById('btnStartAnim');
+    btn.disabled = true;
+    btn.textContent = '⏳ Resuming…';
+    const cancelBtn = document.getElementById('btnCancelAnim');
+    cancelBtn.style.display = 'block';
+    cancelBtn.disabled = false;
+
+    setTabActivity('spritegen', true);
+    _tempUploads = [];
+
+    for (let r = 0; r < selectedAnims.length; r++) {
+        const animId = selectedAnims[r];
+        const status = rowStatuses[animId];
+        if (!status) continue;
+
+        const preset = ANIMATION_PRESETS.find(p => p.id === animId);
+        const doneFrames = completedFrames[animId] || [];
+        // Find the index of first missing frame
+        let startFrame = framesCount; // default: already complete
+        for (let i = 0; i < framesCount; i++) {
+            if (!doneFrames[i]) { startFrame = i; break; }
+        }
+        if (startFrame >= framesCount) continue; // row fully done, skip
+
+        const getFramePrompt = (frameIndex) => {
+            if (preset?.keyframes?.length > 0) {
+                return `${basePositivePrompt}, ${preset.keyframes[frameIndex % preset.keyframes.length]}`;
+            }
+            return `${basePositivePrompt}, ${status.pose || preset?.pose || ''}`;
+        };
+
+        // The chain reference should start from the last completed frame if available
+        let currentFrameRefImg = s.lastFrameRefImg || baseRefUploadName;
+
+        for (let c = startFrame; c < framesCount; c++) {
+            if (cancelGenerationFlag || abortSignal.aborted) {
+                const tl = '✅'.repeat(c) + '❌'.repeat(framesCount - c);
+                status.div.innerText = tl;
+                break;
+            }
+
+            status.div.innerText = '✅'.repeat(c) + '⏳' + '⬜'.repeat(framesCount - c - 1);
+            setSpriteStatus(`Resuming ${animId} — Frame ${c + 1}/${framesCount}…`, 'active');
+            showSpriteProgress(true);
+            setProgress(0);
+
+            const animPrompt = getFramePrompt(c);
+            try {
+                let steps = 15; let cfg = 7.0;
+                if (selectedModel.type === 'sdxl_lightning') { steps = 4; cfg = 2.0; }
+
+                const workflowData = await buildImg2ImgWorkflow(
+                    currentFrameRefImg, animPrompt, baseNegativePrompt,
+                    { name: selectedModel.name, type: selectedModel.type, steps, cfg, denoise }
+                );
+
+                const res = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID }),
+                    signal: abortSignal
+                });
+                if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
+                const data = await res.json();
+
+                saveSession({ activeAnimId: animId, activeFrameIndex: c, activePromptId: data.prompt_id });
+
+                const filename = await pollHistory(data.prompt_id, abortSignal);
+                const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+
+                await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+                    img.onload = () => {
+                        canvasCtx.drawImage(img, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+                        resolve();
+                    };
+                    img.onerror = reject;
+                    img.src = imgUrl;
+                });
+
+                const blobRes = await fetch(imgUrl);
+                const blob = await blobRes.blob();
+                currentFrameRefImg = await uploadImageToComfy(blob, `recur_resume_${animId}_${c}_${Date.now()}.png`);
+                _tempUploads.push(currentFrameRefImg);
+
+                const sessionState = loadSession(false);
+                if (sessionState) {
+                    const cf = sessionState.completedFrames || {};
+                    if (!cf[animId]) cf[animId] = [];
+                    cf[animId][c] = filename;
+                    saveSession({ completedFrames: cf, activePromptId: null, lastFrameRefImg: currentFrameRefImg });
+                }
+
+                status.div.innerText = '✅'.repeat(c + 1) + '⬜'.repeat(framesCount - c - 1);
+
+            } catch (err) {
+                if (err.name === 'AbortError' || cancelGenerationFlag) break;
+                console.error(err);
+                status.div.innerText = '✅'.repeat(c) + '❌' + '⬜'.repeat(framesCount - c - 1);
+                setSpriteStatus(`Error on ${animId} frame ${c + 1}: ${err.message} — Continuing…`, 'error');
+            }
+        }
+
+        status.playBtn.style.display = 'block';
+        status.retryRowBtn.style.display = 'block';
+    }
+
+    const wasCancelled = cancelGenerationFlag;
+    setSpriteStatus(wasCancelled ? '⛔ Resume cancelled.' : '✨ Session resumed — sequence complete!', wasCancelled ? 'error' : 'success');
+    showSpriteProgress(false);
+    btn.disabled = false;
+    btn.textContent = '✦ Start Sequential Generation';
+    cancelBtn.style.display = 'none';
+    cancelGenerationFlag = false;
+    setTabActivity('spritegen', false);
+    clearSession();
+    logTempUploadsOnComplete();
+    if (!wasCancelled) {
+        document.getElementById('downloadSheetBtn').style.display = 'block';
+        document.getElementById('downloadZipBtn').style.display = 'block';
+        document.getElementById('exportSessionBtn').style.display = 'block';
+        document.getElementById('importSessionLabel').style.display = 'block';
+        document.getElementById('btnReorderFrames').style.display = 'block';
+    }
+}
+
+// ============================================================
 //  FRAME REORDER
 // ============================================================
 let _reorderList = [];

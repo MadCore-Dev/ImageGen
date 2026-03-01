@@ -20,7 +20,7 @@ import { checkComfyStatus, initWebSocket, pollHistory } from './api.js';
 import { buildWorkflow } from './workflows.js';
 import { checkForRecovery } from './session.js';
 import { initCanvasEventListeners } from './canvas.js';
-import { selectSpriteModel, initAnimationPicker } from './sprite_engine.js';
+import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue } from './sprite_engine.js';
 
 // ============================================================
 //  MAIN GENERATOR ORCHESTRATION & APP INIT
@@ -68,7 +68,7 @@ export function cancelGenerateImage() {
     }
 }
 
-const _originalGenerateImage = async function (signal) {
+const _originalGenerateImage = async function (signal, isBatchRun = false) {
     const userPositive = document.getElementById('promptInput').value.trim();
     const userNegative = document.getElementById('negativeInput').value.trim();
 
@@ -163,7 +163,7 @@ const _originalGenerateImage = async function (signal) {
         showProgress(false);
     } finally {
         const cancelBtn = document.getElementById('cancelBtn');
-        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (cancelBtn && !isBatchRun) cancelBtn.style.display = 'none';
         btn.disabled = false;
         btn.textContent = '✦ Generate Image';
         setTabActivity('imagegen', false);
@@ -176,7 +176,7 @@ let generateImage = async function () {
     const n = _batchCount;
     _tab1AbortController = new AbortController();
     const signal = _tab1AbortController.signal;
-    if (n === 1) { return _originalGenerateImage(signal); }
+    if (n === 1) { return _originalGenerateImage(signal, false); }
 
     const btn = document.getElementById('generateBtn');
     btn.disabled = true;
@@ -201,7 +201,7 @@ let generateImage = async function () {
         if (signal.aborted) break;
         btn.textContent = `⏳ Batch ${i + 1}/${n}…`;
         try {
-            await _originalGenerateImage(signal);
+            await _originalGenerateImage(signal, true);
             const src = document.getElementById('resultImage').src;
             if (src) {
                 const dlBtn = document.createElement('button');
@@ -399,134 +399,134 @@ export function initEventListeners() {
     if (el_btnTabImagegen) el_btnTabImagegen.addEventListener('click', (e) => { switchTab('imagegen') });
     const el_btnTabSpritegen = document.getElementById('btnTabSpritegen');
     if (el_btnTabSpritegen) el_btnTabSpritegen.addEventListener('click', (e) => { switchTab('spritegen') });
-    const el_autoGenId_5 = document.getElementById('autoGenId_5');
-    if (el_autoGenId_5) el_autoGenId_5.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_6 = document.getElementById('autoGenId_6');
-    if (el_autoGenId_6) el_autoGenId_6.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_7 = document.getElementById('autoGenId_7');
-    if (el_autoGenId_7) el_autoGenId_7.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_8 = document.getElementById('autoGenId_8');
-    if (el_autoGenId_8) el_autoGenId_8.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_9 = document.getElementById('autoGenId_9');
-    if (el_autoGenId_9) el_autoGenId_9.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_10 = document.getElementById('autoGenId_10');
-    if (el_autoGenId_10) el_autoGenId_10.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_11 = document.getElementById('autoGenId_11');
-    if (el_autoGenId_11) el_autoGenId_11.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_12 = document.getElementById('autoGenId_12');
-    if (el_autoGenId_12) el_autoGenId_12.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_13 = document.getElementById('autoGenId_13');
-    if (el_autoGenId_13) el_autoGenId_13.addEventListener('click', (e) => { selectStyle(e.currentTarget) });
-    const el_autoGenId_14 = document.getElementById('autoGenId_14');
-    if (el_autoGenId_14) el_autoGenId_14.addEventListener('click', (e) => { clearStyle() });
-    const el_autoGenId_15 = document.getElementById('autoGenId_15');
-    if (el_autoGenId_15) el_autoGenId_15.addEventListener('click', (e) => { selectModel(e.currentTarget) });
-    const el_autoGenId_16 = document.getElementById('autoGenId_16');
-    if (el_autoGenId_16) el_autoGenId_16.addEventListener('click', (e) => { selectModel(e.currentTarget) });
-    const el_autoGenId_17 = document.getElementById('autoGenId_17');
-    if (el_autoGenId_17) el_autoGenId_17.addEventListener('click', (e) => { selectModel(e.currentTarget) });
-    const el_autoGenId_18 = document.getElementById('autoGenId_18');
-    if (el_autoGenId_18) el_autoGenId_18.addEventListener('click', (e) => { selectModel(e.currentTarget) });
-    const el_autoGenId_19 = document.getElementById('autoGenId_19');
-    if (el_autoGenId_19) el_autoGenId_19.addEventListener('click', (e) => { selectModel(e.currentTarget) });
-    const el_autoGenId_20 = document.getElementById('autoGenId_20');
-    if (el_autoGenId_20) el_autoGenId_20.addEventListener('click', (e) => { selectModel(e.currentTarget) });
+    // Style chips — event delegation
+    document.querySelectorAll('.style-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => selectStyle(e.currentTarget));
+    });
+    const el_btnClearStyle = document.getElementById('btnClearStyle');
+    if (el_btnClearStyle) el_btnClearStyle.addEventListener('click', () => clearStyle());
+
+    // Model chips — event delegation
+    document.querySelectorAll('.model-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => selectModel(e.currentTarget));
+    });
+
+    // Negative prompt
     const el_negativeInput = document.getElementById('negativeInput');
-    if (el_negativeInput) el_negativeInput.addEventListener('input', (e) => { updateNegCount() });
-    const el_autoGenId_21 = document.getElementById('autoGenId_21');
-    if (el_autoGenId_21) el_autoGenId_21.addEventListener('click', (e) => { toggleInfo('stepsInfo') });
+    if (el_negativeInput) el_negativeInput.addEventListener('input', () => updateNegCount());
+
+    // Steps / CFG sliders + info toggles
+    const el_btnToggleStepsInfo = document.getElementById('btnToggleStepsInfo');
+    if (el_btnToggleStepsInfo) el_btnToggleStepsInfo.addEventListener('click', () => toggleInfo('stepsInfo'));
     const el_stepsSlider = document.getElementById('stepsSlider');
     if (el_stepsSlider) el_stepsSlider.addEventListener('input', (e) => { document.getElementById('stepsVal').textContent = e.currentTarget.value });
-    const el_autoGenId_22 = document.getElementById('autoGenId_22');
-    if (el_autoGenId_22) el_autoGenId_22.addEventListener('click', (e) => { toggleInfo('cfgInfo') });
+    const el_btnToggleCfgInfo = document.getElementById('btnToggleCfgInfo');
+    if (el_btnToggleCfgInfo) el_btnToggleCfgInfo.addEventListener('click', () => toggleInfo('cfgInfo'));
     const el_cfgSlider = document.getElementById('cfgSlider');
     if (el_cfgSlider) el_cfgSlider.addEventListener('input', (e) => { document.getElementById('cfgVal').textContent = parseFloat(e.currentTarget.value).toFixed(1) });
-    const el_autoGenId_23 = document.getElementById('autoGenId_23');
-    if (el_autoGenId_23) el_autoGenId_23.addEventListener('click', (e) => { randomizeSeed() });
+
+    // Seed
+    const el_btnRandomizeSeed = document.getElementById('btnRandomizeSeed');
+    if (el_btnRandomizeSeed) el_btnRandomizeSeed.addEventListener('click', () => randomizeSeed());
     const el_lockSeedBtn = document.getElementById('lockSeedBtn');
-    if (el_lockSeedBtn) el_lockSeedBtn.addEventListener('click', (e) => { lockSeed() });
+    if (el_lockSeedBtn) el_lockSeedBtn.addEventListener('click', () => lockSeed());
+
+    // Prompt + history
     const el_promptInput = document.getElementById('promptInput');
-    if (el_promptInput) el_promptInput.addEventListener('input', (e) => { updateCharCount() });
-    const el_autoGenId_24 = document.getElementById('autoGenId_24');
-    if (el_autoGenId_24) el_autoGenId_24.addEventListener('click', (e) => { toggleHistoryPanel() });
-    const el_autoGenId_25 = document.getElementById('autoGenId_25');
-    if (el_autoGenId_25) el_autoGenId_25.addEventListener('click', (e) => { e.stopPropagation(); clearPromptHistory() });
-    const el_autoGenId_26 = document.getElementById('autoGenId_26');
-    if (el_autoGenId_26) el_autoGenId_26.addEventListener('click', (e) => { setBatchCount(1) });
-    const el_autoGenId_27 = document.getElementById('autoGenId_27');
-    if (el_autoGenId_27) el_autoGenId_27.addEventListener('click', (e) => { setBatchCount(2) });
-    const el_autoGenId_28 = document.getElementById('autoGenId_28');
-    if (el_autoGenId_28) el_autoGenId_28.addEventListener('click', (e) => { setBatchCount(3) });
-    const el_autoGenId_29 = document.getElementById('autoGenId_29');
-    if (el_autoGenId_29) el_autoGenId_29.addEventListener('click', (e) => { setBatchCount(4) });
+    if (el_promptInput) el_promptInput.addEventListener('input', () => updateCharCount());
+    const el_historyHeader = document.getElementById('historyHeader');
+    if (el_historyHeader) el_historyHeader.addEventListener('click', () => toggleHistoryPanel());
+    const el_btnClearHistory = document.getElementById('btnClearHistory');
+    if (el_btnClearHistory) el_btnClearHistory.addEventListener('click', (e) => { e.stopPropagation(); clearPromptHistory() });
+
+    // Batch pills — event delegation
+    document.querySelectorAll('.batch-pill').forEach(pill => {
+        pill.addEventListener('click', (e) => setBatchCount(parseInt(e.currentTarget.dataset.count)));
+    });
+
+    // Tab 1 action buttons
     const el_generateBtn = document.getElementById('generateBtn');
-    if (el_generateBtn) el_generateBtn.addEventListener('click', (e) => { generateImage() });
+    if (el_generateBtn) el_generateBtn.addEventListener('click', () => generateImage());
     const el_cancelBtn = document.getElementById('cancelBtn');
-    if (el_cancelBtn) el_cancelBtn.addEventListener('click', (e) => { cancelGenerateImage() });
+    if (el_cancelBtn) el_cancelBtn.addEventListener('click', () => cancelGenerateImage());
     const el_downloadBtn = document.getElementById('downloadBtn');
-    if (el_downloadBtn) el_downloadBtn.addEventListener('click', (e) => { downloadImage() });
+    if (el_downloadBtn) el_downloadBtn.addEventListener('click', () => downloadImage());
+
+    // Session recovery
     const el_btnResumeSession = document.getElementById('btnResumeSession');
-    if (el_btnResumeSession) el_btnResumeSession.addEventListener('click', (e) => { resumeSession() });
+    if (el_btnResumeSession) el_btnResumeSession.addEventListener('click', async () => {
+        const result = await resumeSession();
+        if (result && !result.allDone) {
+            resumeAnimationQueue(result);
+        }
+    });
     const el_btnDismissSession = document.getElementById('btnDismissSession');
-    if (el_btnDismissSession) el_btnDismissSession.addEventListener('click', (e) => { dismissSession() });
-    const el_autoGenId_30 = document.getElementById('autoGenId_30');
-    if (el_autoGenId_30) el_autoGenId_30.addEventListener('click', (e) => { setSpriteSize(16, e.currentTarget) });
-    const el_autoGenId_31 = document.getElementById('autoGenId_31');
-    if (el_autoGenId_31) el_autoGenId_31.addEventListener('click', (e) => { setSpriteSize(32, e.currentTarget) });
-    const el_autoGenId_32 = document.getElementById('autoGenId_32');
-    if (el_autoGenId_32) el_autoGenId_32.addEventListener('click', (e) => { setSpriteSize(48, e.currentTarget) });
-    const el_autoGenId_33 = document.getElementById('autoGenId_33');
-    if (el_autoGenId_33) el_autoGenId_33.addEventListener('click', (e) => { setSpriteSize(64, e.currentTarget) });
-    const el_autoGenId_34 = document.getElementById('autoGenId_34');
-    if (el_autoGenId_34) el_autoGenId_34.addEventListener('click', (e) => { setSpriteSize(128, e.currentTarget) });
+    if (el_btnDismissSession) el_btnDismissSession.addEventListener('click', () => dismissSession());
+
+    // Sprite size presets — event delegation
+    document.querySelectorAll('#spriteSizeGroup .preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const size = parseInt(e.currentTarget.dataset.size);
+            setSpriteSize(size, e.currentTarget);
+        });
+    });
+
+    // Sprite model chips — event delegation
+    document.querySelectorAll('.sprite-model-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => selectSpriteModel(e.currentTarget));
+    });
+
+    // Sprite ref gen
     const el_btnGenRef = document.getElementById('btnGenRef');
-    if (el_btnGenRef) el_btnGenRef.addEventListener('click', (e) => { generateSpriteRef() });
+    if (el_btnGenRef) el_btnGenRef.addEventListener('click', () => generateSpriteRef());
     const el_btnUploadRef = document.getElementById('btnUploadRef');
-    if (el_btnUploadRef) el_btnUploadRef.addEventListener('click', (e) => { document.getElementById('fileUploadRef').click() });
+    if (el_btnUploadRef) el_btnUploadRef.addEventListener('click', () => document.getElementById('fileUploadRef').click());
     const el_fileUploadRef = document.getElementById('fileUploadRef');
-    if (el_fileUploadRef) el_fileUploadRef.addEventListener('change', (e) => { handleCustomUpload(e) });
+    if (el_fileUploadRef) el_fileUploadRef.addEventListener('change', (e) => handleCustomUpload(e));
     const el_btnApproveRef = document.getElementById('btnApproveRef');
-    if (el_btnApproveRef) el_btnApproveRef.addEventListener('click', (e) => { approveReference() });
-    const el_autoGenId_35 = document.getElementById('autoGenId_35');
-    if (el_autoGenId_35) el_autoGenId_35.addEventListener('click', (e) => { selectSpriteModel(e.currentTarget) });
-    const el_autoGenId_36 = document.getElementById('autoGenId_36');
-    if (el_autoGenId_36) el_autoGenId_36.addEventListener('click', (e) => { selectSpriteModel(e.currentTarget) });
-    const el_autoGenId_37 = document.getElementById('autoGenId_37');
-    if (el_autoGenId_37) el_autoGenId_37.addEventListener('click', (e) => { selectSpriteModel(e.currentTarget) });
-    const el_autoGenId_38 = document.getElementById('autoGenId_38');
-    if (el_autoGenId_38) el_autoGenId_38.addEventListener('click', (e) => { selectSpriteModel(e.currentTarget) });
+    if (el_btnApproveRef) el_btnApproveRef.addEventListener('click', () => approveReference());
+
+    // Animation queue controls
     const el_frameCountSlider = document.getElementById('frameCountSlider');
     if (el_frameCountSlider) el_frameCountSlider.addEventListener('input', (e) => { document.getElementById('frameCountVal').innerText = e.currentTarget.value });
     const el_denoiseSlider = document.getElementById('denoiseSlider');
     if (el_denoiseSlider) el_denoiseSlider.addEventListener('input', (e) => { document.getElementById('denoiseVal').innerText = e.currentTarget.value });
     const el_btnStartAnim = document.getElementById('btnStartAnim');
-    if (el_btnStartAnim) el_btnStartAnim.addEventListener('click', (e) => { startAnimationQueue() });
+    if (el_btnStartAnim) el_btnStartAnim.addEventListener('click', () => startAnimationQueue());
     const el_btnCancelAnim = document.getElementById('btnCancelAnim');
-    if (el_btnCancelAnim) el_btnCancelAnim.addEventListener('click', (e) => { cancelAnimationQueue() });
-    const el_autoGenId_39 = document.getElementById('autoGenId_39');
-    if (el_autoGenId_39) el_autoGenId_39.addEventListener('click', (e) => { applyFrameReorder() });
-    const el_autoGenId_40 = document.getElementById('autoGenId_40');
-    if (el_autoGenId_40) el_autoGenId_40.addEventListener('click', (e) => { hideFrameReorder() });
+    if (el_btnCancelAnim) el_btnCancelAnim.addEventListener('click', () => cancelAnimationQueue());
+
+    // Frame reorder
+    const el_btnApplyFrameOrder = document.getElementById('btnApplyFrameOrder');
+    if (el_btnApplyFrameOrder) el_btnApplyFrameOrder.addEventListener('click', () => applyFrameReorder());
+    const el_btnHideFrameOrder = document.getElementById('btnHideFrameOrder');
+    if (el_btnHideFrameOrder) el_btnHideFrameOrder.addEventListener('click', () => hideFrameReorder());
+
+    // Sheet download + export
     const el_downloadSheetBtn = document.getElementById('downloadSheetBtn');
-    if (el_downloadSheetBtn) el_downloadSheetBtn.addEventListener('click', (e) => { downloadSpriteSheet() });
+    if (el_downloadSheetBtn) el_downloadSheetBtn.addEventListener('click', () => downloadSpriteSheet());
     const el_downloadZipBtn = document.getElementById('downloadZipBtn');
-    if (el_downloadZipBtn) el_downloadZipBtn.addEventListener('click', (e) => { downloadFramesZip() });
+    if (el_downloadZipBtn) el_downloadZipBtn.addEventListener('click', () => downloadFramesZip());
     const el_btnReorderFrames = document.getElementById('btnReorderFrames');
-    if (el_btnReorderFrames) el_btnReorderFrames.addEventListener('click', (e) => { showFrameReorder() });
+    if (el_btnReorderFrames) el_btnReorderFrames.addEventListener('click', () => showFrameReorder());
     const el_exportSessionBtn = document.getElementById('exportSessionBtn');
-    if (el_exportSessionBtn) el_exportSessionBtn.addEventListener('click', (e) => { exportSessionJSON() });
-    const el_autoGenId_41 = document.getElementById('autoGenId_41');
-    if (el_autoGenId_41) el_autoGenId_41.addEventListener('change', (e) => { importSessionJSON(e) });
-    const el_autoGenId_42 = document.getElementById('autoGenId_42');
-    if (el_autoGenId_42) el_autoGenId_42.addEventListener('click', (e) => { closeCellPreview() });
+    if (el_exportSessionBtn) el_exportSessionBtn.addEventListener('click', () => exportSessionJSON());
+    const el_importSessionInput = document.getElementById('importSessionInput');
+    if (el_importSessionInput) el_importSessionInput.addEventListener('change', (e) => importSessionJSON(e));
+
+    // Cell preview modal
+    const el_btnCloseCellPreview = document.getElementById('btnCloseCellPreview');
+    if (el_btnCloseCellPreview) el_btnCloseCellPreview.addEventListener('click', () => closeCellPreview());
+
+    // GIF / FPS
     const el_fpsSlider = document.getElementById('fpsSlider');
-    if (el_fpsSlider) el_fpsSlider.addEventListener('input', (e) => { updatePreviewFps(e.currentTarget.value) });
+    if (el_fpsSlider) el_fpsSlider.addEventListener('input', (e) => updatePreviewFps(e.currentTarget.value));
     const el_btnRetryCell = document.getElementById('btnRetryCell');
-    if (el_btnRetryCell) el_btnRetryCell.addEventListener('click', (e) => { retryActiveCell() });
+    if (el_btnRetryCell) el_btnRetryCell.addEventListener('click', () => retryActiveCell());
     const el_btnCopyFrame = document.getElementById('btnCopyFrame');
-    if (el_btnCopyFrame) el_btnCopyFrame.addEventListener('click', (e) => { copyFrameToClipboard() });
+    if (el_btnCopyFrame) el_btnCopyFrame.addEventListener('click', () => copyFrameToClipboard());
     const el_btnDownloadGif = document.getElementById('btnDownloadGif');
-    if (el_btnDownloadGif) el_btnDownloadGif.addEventListener('click', (e) => { exportActiveAnimationGif() });
+    if (el_btnDownloadGif) el_btnDownloadGif.addEventListener('click', () => exportActiveAnimationGif());
 }
 
 // Ensure initEventListeners is available for any dynamic invocations if needed, though initApp() handles it.

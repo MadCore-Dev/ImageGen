@@ -5,8 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Epoch: Offline Image Gen</title>
-  <script src="vendor/jszip.min.js"></script>
-  <script src="vendor/gif.js"></script>
+  <script type="application/javascript" src="vendor/jszip.min.js"></script>
+  <script type="application/javascript" src="vendor/gif.js"></script>
   <link rel="stylesheet" href="css/styles.css">
 
 
@@ -16,7 +16,7 @@
   ============================================================ -->
   <div class="modal-overlay" id="settingsModal">
     <div class="modal-box">
-      <button id="autoGenId_1" class="btn-settings-close">&#x2715;</button>
+      <button id="btnCloseSettings" class="btn-settings-close">&#x2715;</button>
       <h3>⚙️ Connection Settings</h3>
       <div class="settings-row">
         <label>ComfyUI API Address</label>
@@ -33,7 +33,7 @@
         <input type="text" id="settingOutputPath" placeholder="/Users/yourname/.ComfyUI/output">
         <div class="settings-hint">Shown in the header for reference only</div>
       </div>
-      <button id="autoGenId_2" class="btn-settings-save">Save &amp; Apply</button>
+      <button id="btnSaveSettings" class="btn-settings-save">Save &amp; Apply</button>
     </div>
   </div>
 
@@ -50,13 +50,13 @@
           title="Click 📋 to copy path, then open Finder (Shift+⌘+G) and paste">
           📂 <span id="outputFolderPath"
             style="font-family:'SF Mono',monospace; font-size:10px;">/Users/manojsamal/.ComfyUI/output</span>
-          <button id="autoGenId_3"
+          <button id="btnCopyOutputPath"
             style="background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;color:inherit;"
             title="Copy path">
             <span id="copyOutputLabel">📋 Copy</span>
           </button>
         </span>
-        <button id="autoGenId_4"
+        <button id="btnOpenSettings"
           style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--text-muted); cursor:pointer;">
           ⚙️ Settings
         </button>
@@ -84,29 +84,28 @@
             style="color:var(--text-dim); font-weight:400; font-size:10px; text-transform:none; letter-spacing:0; margin-left:4px;">→
             tap to auto-configure model + keywords</span></div>
         <div class="style-grid" id="styleGrid">
-          <button id="autoGenId_5" class="style-chip" data-style="photorealistic"><span
-              class="style-icon">📸</span><span class="style-name">Photorealistic</span><span
-              class="style-sub">Juggernaut XL</span></button>
-          <button id="autoGenId_6" class="style-chip" data-style="portrait"><span class="style-icon">🧑</span><span
+          <button class="style-chip" data-style="photorealistic"><span class="style-icon">📸</span><span
+              class="style-name">Photorealistic</span><span class="style-sub">Juggernaut XL</span></button>
+          <button class="style-chip" data-style="portrait"><span class="style-icon">🧑</span><span
               class="style-name">Portrait</span><span class="style-sub">Juggernaut
               XL</span></button>
-          <button id="autoGenId_7" class="style-chip" data-style="anime"><span class="style-icon">🌸</span><span
+          <button class="style-chip" data-style="anime"><span class="style-icon">🌸</span><span
               class="style-name">Anime</span><span class="style-sub">Pony
               Diffusion</span></button>
-          <button id="autoGenId_8" class="style-chip" data-style="pixel"><span class="style-icon">👾</span><span
-              class="style-name">Pixel Art</span><span class="style-sub">FLUX +
+          <button class="style-chip" data-style="pixel"><span class="style-icon">👾</span><span class="style-name">Pixel
+              Art</span><span class="style-sub">FLUX +
               LoRA</span></button>
-          <button id="autoGenId_9" class="style-chip" data-style="cartoon"><span class="style-icon">🎨</span><span
+          <button class="style-chip" data-style="cartoon"><span class="style-icon">🎨</span><span
               class="style-name">Cartoon</span><span class="style-sub">DreamShaper
               8</span></button>
-          <button id="autoGenId_10" class="style-chip" data-style="fantasy"><span class="style-icon">🏰</span><span
+          <button class="style-chip" data-style="fantasy"><span class="style-icon">🏰</span><span
               class="style-name">Fantasy / RPG</span><span class="style-sub">AnyLoRA</span></button>
-          <button id="autoGenId_11" class="style-chip" data-style="scifi"><span class="style-icon">🌆</span><span
+          <button class="style-chip" data-style="scifi"><span class="style-icon">🌆</span><span
               class="style-name">Sci-Fi</span><span class="style-sub">DreamShaper
               Lightning</span></button>
-          <button id="autoGenId_12" class="style-chip" data-style="3d"><span class="style-icon">🧊</span><span
-              class="style-name">3D Render</span><span class="style-sub">DreamShaper Lightning</span></button>
-          <button id="autoGenId_13" class="style-chip" data-style="nsfw"><span class="style-icon">🔞</span><span
+          <button class="style-chip" data-style="3d"><span class="style-icon">🧊</span><span class="style-name">3D
+              Render</span><span class="style-sub">DreamShaper Lightning</span></button>
+          <button class="style-chip" data-style="nsfw"><span class="style-icon">🔞</span><span
               class="style-name">NSFW</span><span class="style-sub">Pony
               Diffusion</span></button>
         </div>
@@ -114,7 +113,7 @@
           <span style="font-size:10px; color:var(--text-dim);">Injecting keywords:</span>
           <span id="styleKeywordsTags"
             style="font-size:11px; color:var(--accent); margin-left:6px; font-family:'SF Mono',monospace;"></span>
-          <button id="autoGenId_14"
+          <button id="btnClearStyle"
             style="float:right; background:none; border:none; color:var(--text-dim); font-size:11px; cursor:pointer; text-decoration:underline;">✕
             Clear</button>
         </div>
@@ -129,19 +128,19 @@
                 <span style="font-weight:400; opacity:0.5;">(auto-selected by style)</span>
               </div>
               <div class="model-grid" id="modelGrid">
-                <button id="autoGenId_15" class="model-chip active" data-model="flux" data-type="gguf">FLUX
+                <button class="model-chip active" data-model="flux" data-type="gguf">FLUX
                   Schnell <span class="badge badge-flux">FLUX</span></button>
-                <button id="autoGenId_16" class="model-chip" data-model="Juggernaut-XL_v9.safetensors"
-                  data-type="sdxl">Juggernaut XL v9 <span class="badge badge-xl">XL</span></button>
-                <button id="autoGenId_17" class="model-chip" data-model="DreamShaperXL_Lightning.safetensors"
+                <button class="model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl">Juggernaut XL v9
+                  <span class="badge badge-xl">XL</span></button>
+                <button class="model-chip" data-model="DreamShaperXL_Lightning.safetensors"
                   data-type="sdxl_lightning">DreamShaper Lightning <span
                     class="badge badge-speed">4-STEP</span></button>
-                <button id="autoGenId_18" class="model-chip" data-model="ponyDiffusionV6XL.safetensors"
-                  data-type="sdxl">Pony Diffusion V6 XL <span class="badge badge-xl">XL</span></button>
-                <button id="autoGenId_19" class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors"
-                  data-type="sd15">AnyLoRA <span class="badge badge-15">SD1.5</span></button>
-                <button id="autoGenId_20" class="model-chip" data-model="DreamShaper_8_pruned.safetensors"
-                  data-type="sd15">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
+                <button class="model-chip" data-model="ponyDiffusionV6XL.safetensors" data-type="sdxl">Pony Diffusion V6
+                  XL <span class="badge badge-xl">XL</span></button>
+                <button class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15">AnyLoRA
+                  <span class="badge badge-15">SD1.5</span></button>
+                <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15">DreamShaper 8
+                  <span class="badge badge-15">SD1.5</span></button>
               </div>
 
               <!-- fix #23: LoRA support -->
@@ -176,7 +175,7 @@
             <div class="controls-grid" style="margin-bottom:14px;">
               <div class="control-item">
                 <label>Steps <span class="value-display" id="stepsVal">15</span>
-                  <span id="autoGenId_21" class="info-trigger" title="What is this?">ⓘ</span></label>
+                  <span id="btnToggleStepsInfo" class="info-trigger" title="What is this?">ⓘ</span></label>
                 <input type="range" id="stepsSlider" min="1" max="50" value="15">
                 <div class="info-tooltip" id="stepsInfo"><strong>Steps</strong> = denoising iterations.<br><br>• FLUX:
                   <strong>4–8</strong> &nbsp;• Lightning: <strong>6–10</strong><br>• SDXL/SD1.5: <strong>20–30</strong>
@@ -184,7 +183,7 @@
               </div>
               <div class="control-item">
                 <label>CFG Scale <span class="value-display" id="cfgVal">7.0</span>
-                  <span id="autoGenId_22" class="info-trigger" title="What is this?">ⓘ</span></label>
+                  <span id="btnToggleCfgInfo" class="info-trigger" title="What is this?">ⓘ</span></label>
                 <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7">
                 <div class="info-tooltip" id="cfgInfo"><strong>CFG</strong> = prompt adherence.<br><br>• FLUX:
                   <strong>1.0</strong> &nbsp;• Lightning: <strong>2–3</strong><br>• SDXL: <strong>6–8</strong> &nbsp;•
@@ -197,7 +196,7 @@
               <label>🎲 Seed</label>
               <input type="number" id="seedInput" min="0" max="9999999999" value="" placeholder="Random"
                 title="Leave blank for a random seed">
-              <button id="autoGenId_23" class="icon-btn" title="Randomize seed">🔀</button>
+              <button id="btnRandomizeSeed" class="icon-btn" title="Randomize seed">🔀</button>
               <button class="icon-btn" id="lockSeedBtn" title="Lock last used seed">🔒</button>
             </div>
 
@@ -216,10 +215,10 @@
       <!-- ── ACTION BUTTONS ── -->
       <!-- fix #18: prompt history panel -->
       <div class="history-panel" id="historyPanel" style="display:none;">
-        <div id="autoGenId_24" class="history-header">
+        <div id="historyHeader" class="history-header">
           <span>🕒 Prompt History</span>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button id="autoGenId_25" class="history-clear" title="Clear all history"
+            <button id="btnClearHistory" class="history-clear" title="Clear all history"
               aria-label="Clear prompt history">Clear</button>
             <span id="historyChevron">▼</span>
           </div>
@@ -232,10 +231,10 @@
         <span
           style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Batch</span>
         <div style="display:flex; gap:4px;" id="batchPills">
-          <button id="autoGenId_26" class="batch-pill active" data-count="1" aria-label="Generate 1 image">1</button>
-          <button id="autoGenId_27" class="batch-pill" data-count="2" aria-label="Generate 2 images">2</button>
-          <button id="autoGenId_28" class="batch-pill" data-count="3" aria-label="Generate 3 images">3</button>
-          <button id="autoGenId_29" class="batch-pill" data-count="4" aria-label="Generate 4 images">4</button>
+          <button class="batch-pill active" data-count="1" aria-label="Generate 1 image">1</button>
+          <button class="batch-pill" data-count="2" aria-label="Generate 2 images">2</button>
+          <button class="batch-pill" data-count="3" aria-label="Generate 3 images">3</button>
+          <button class="batch-pill" data-count="4" aria-label="Generate 4 images">4</button>
         </div>
       </div>
       <div class="action-row">
@@ -317,12 +316,12 @@
 
         <div class="gap-sm">
           <label class="lbl">Frame Size</label>
-          <div class="preset-btns">
-            <button id="autoGenId_30" class="preset-btn">16×16</button>
-            <button id="autoGenId_31" class="preset-btn">32×32</button>
-            <button id="autoGenId_32" class="preset-btn">48×48</button>
-            <button id="autoGenId_33" class="preset-btn active">64×64 (Default)</button>
-            <button id="autoGenId_34" class="preset-btn">128×128 (HD)</button>
+          <div class="preset-btns" id="spriteSizeGroup">
+            <button class="preset-btn" data-size="16">16×16</button>
+            <button class="preset-btn" data-size="32">32×32</button>
+            <button class="preset-btn" data-size="48">48×48</button>
+            <button class="preset-btn active" data-size="64">64×64 (Default)</button>
+            <button class="preset-btn" data-size="128">128×128 (HD)</button>
           </div>
         </div>
 
@@ -388,15 +387,14 @@
                 <span style="font-weight:400; opacity:0.5;">(AnyLoRA recommended for sprites)</span>
               </div>
               <div class="sprite-model-grid" id="spriteModelGrid">
-                <button id="autoGenId_35" class="sprite-model-chip active"
-                  data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15">AnyLoRA <span
-                    class="badge badge-15">SD1.5</span></button>
-                <button id="autoGenId_36" class="sprite-model-chip" data-model="DreamShaper_8_pruned.safetensors"
+                <button class="sprite-model-chip active" data-model="AnyLoRA_noVae_fp16-pruned.safetensors"
+                  data-type="sd15">AnyLoRA <span class="badge badge-15">SD1.5</span></button>
+                <button class="sprite-model-chip" data-model="DreamShaper_8_pruned.safetensors"
                   data-type="sd15">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
-                <button id="autoGenId_37" class="sprite-model-chip" data-model="DreamShaperXL_Lightning.safetensors"
+                <button class="sprite-model-chip" data-model="DreamShaperXL_Lightning.safetensors"
                   data-type="sdxl_lightning">DreamShaper ⚡ <span class="badge badge-speed">4-STEP</span></button>
-                <button id="autoGenId_38" class="sprite-model-chip" data-model="Juggernaut-XL_v9.safetensors"
-                  data-type="sdxl">Juggernaut XL <span class="badge badge-xl">XL</span></button>
+                <button class="sprite-model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl">Juggernaut
+                  XL <span class="badge badge-xl">XL</span></button>
               </div>
             </div>
 
@@ -470,9 +468,9 @@
             <select id="reorderAnimSelect"
               style="flex:1; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; color:var(--text-primary);">
             </select>
-            <button id="autoGenId_39" class="btn-download" style="font-size:12px; padding:6px 14px;">✓ Apply
+            <button id="btnApplyFrameOrder" class="btn-download" style="font-size:12px; padding:6px 14px;">✓ Apply
               Order</button>
-            <button id="autoGenId_40" class="btn-download"
+            <button id="btnHideFrameOrder" class="btn-download"
               style="font-size:12px; padding:6px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-muted);">Cancel</button>
           </div>
         </div>
@@ -496,7 +494,7 @@
             style="flex:1; display:none; cursor:pointer; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px; text-align:center;"
             id="importSessionLabel">
             📥 Import Session JSON
-            <input id="autoGenId_41" type="file" accept=".json" style="display:none;">
+            <input id="importSessionInput" type="file" accept=".json" style="display:none;">
           </label>
         </div>
       </div>
@@ -508,7 +506,7 @@
   <div id="cellPreviewModal"
     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
     <div class="card" style="width: 440px; text-align:center; position:relative;">
-      <button id="autoGenId_42"
+      <button id="btnCloseCellPreview"
         style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:white; font-size:20px; cursor:pointer;">×</button>
       <div class="card-label" id="previewModalLabel">Frame Preview</div>
 
