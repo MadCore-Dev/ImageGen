@@ -822,6 +822,87 @@
     }
 
     /* ============================================================
+       ADVANCED PANEL (collapsible sections)
+    ============================================================ */
+    details.adv-panel {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    details.adv-panel summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      padding: 2px 0;
+      transition: color var(--transition);
+    }
+
+    details.adv-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.adv-panel summary::before {
+      content: '▶';
+      font-size: 8px;
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+
+    details.adv-panel[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    details.adv-panel summary:hover {
+      color: var(--text-primary);
+    }
+
+    details.adv-panel .adv-body {
+      padding-top: 14px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    /* Sprint model selector in sprite advanced panel */
+    .sprite-model-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .sprite-model-chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .sprite-model-chip:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .sprite-model-chip.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ============================================================
        RECOVERY BANNER
     ============================================================ */
     #recoveryBanner {
@@ -907,110 +988,129 @@
 
     <!-- ── TAB 1: IMAGE GEN ── -->
     <div id="tab-imagegen" class="tab-content active">
-      <!-- ── MODEL SELECTOR ── -->
-      <div class="card">
-        <div class="card-label">Model</div>
-        <div class="model-grid" id="modelGrid">
-          <button class="model-chip active" data-model="flux" data-type="gguf" onclick="selectModel(this)">
-            FLUX Schnell <span class="badge badge-flux">FLUX</span>
-          </button>
-          <button class="model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
-            onclick="selectModel(this)">
-            Juggernaut XL v9 <span class="badge badge-xl">XL</span>
-          </button>
-          <button class="model-chip" data-model="DreamShaperXL_Lightning.safetensors" data-type="sdxl_lightning"
-            onclick="selectModel(this)">
-            DreamShaper Lightning <span class="badge badge-speed">4-STEP</span>
-          </button>
-          <button class="model-chip" data-model="ponyDiffusionV6XL.safetensors" data-type="sdxl"
-            onclick="selectModel(this)">
-            Pony Diffusion V6 XL <span class="badge badge-xl">XL</span>
-          </button>
-          <button class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15"
-            onclick="selectModel(this)">
-            AnyLoRA <span class="badge badge-15">SD1.5</span>
-          </button>
-          <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
-            onclick="selectModel(this)">
-            DreamShaper 8 <span class="badge badge-15">SD1.5</span>
-          </button>
-        </div>
-      </div>
 
-      <!-- ── ART STYLE SELECTOR ── -->
+      <!-- Simple card: Style + Advanced settings collapsed -->
       <div class="card">
-        <div class="card-label">Art Style <span
+        <div class="card-label">Style <span
             style="color:var(--text-dim); font-weight:400; font-size:10px; text-transform:none; letter-spacing:0; margin-left:4px;">→
-            auto-selects best model + injects prompt keywords</span></div>
+            tap to auto-configure model + keywords</span></div>
         <div class="style-grid" id="styleGrid">
-
-          <button class="style-chip" data-style="photorealistic" onclick="selectStyle(this)">
-            <span class="style-icon">📸</span>
-            <span class="style-name">Photorealistic</span>
-            <span class="style-sub">Juggernaut XL</span>
-          </button>
-
-          <button class="style-chip" data-style="portrait" onclick="selectStyle(this)">
-            <span class="style-icon">🧑</span>
-            <span class="style-name">Portrait / Headshot</span>
-            <span class="style-sub">Juggernaut XL</span>
-          </button>
-
-          <button class="style-chip" data-style="anime" onclick="selectStyle(this)">
-            <span class="style-icon">🌸</span>
-            <span class="style-name">Anime</span>
-            <span class="style-sub">Pony Diffusion</span>
-          </button>
-
-          <button class="style-chip" data-style="pixel" onclick="selectStyle(this)">
-            <span class="style-icon">👾</span>
-            <span class="style-name">Pixel Art</span>
-            <span class="style-sub">FLUX + LoRA</span>
-          </button>
-
-          <button class="style-chip" data-style="cartoon" onclick="selectStyle(this)">
-            <span class="style-icon">🎨</span>
-            <span class="style-name">Cartoon / Illustration</span>
-            <span class="style-sub">DreamShaper 8</span>
-          </button>
-
-          <button class="style-chip" data-style="fantasy" onclick="selectStyle(this)">
-            <span class="style-icon">🏰</span>
-            <span class="style-name">Fantasy / RPG</span>
-            <span class="style-sub">AnyLoRA</span>
-          </button>
-
-          <button class="style-chip" data-style="scifi" onclick="selectStyle(this)">
-            <span class="style-icon">🌆</span>
-            <span class="style-name">Sci-Fi / Cyberpunk</span>
-            <span class="style-sub">DreamShaper Lightning</span>
-          </button>
-
-          <button class="style-chip" data-style="3d" onclick="selectStyle(this)">
-            <span class="style-icon">🧊</span>
-            <span class="style-name">3D Render</span>
-            <span class="style-sub">DreamShaper Lightning</span>
-          </button>
-
-          <button class="style-chip" data-style="nsfw" onclick="selectStyle(this)">
-            <span class="style-icon">🔞</span>
-            <span class="style-name">NSFW / Uncensored</span>
-            <span class="style-sub">Pony Diffusion</span>
-          </button>
-
+          <button class="style-chip" data-style="photorealistic" onclick="selectStyle(this)"><span
+              class="style-icon">📸</span><span class="style-name">Photorealistic</span><span
+              class="style-sub">Juggernaut XL</span></button>
+          <button class="style-chip" data-style="portrait" onclick="selectStyle(this)"><span
+              class="style-icon">🧑</span><span class="style-name">Portrait</span><span class="style-sub">Juggernaut
+              XL</span></button>
+          <button class="style-chip" data-style="anime" onclick="selectStyle(this)"><span
+              class="style-icon">🌸</span><span class="style-name">Anime</span><span class="style-sub">Pony
+              Diffusion</span></button>
+          <button class="style-chip" data-style="pixel" onclick="selectStyle(this)"><span
+              class="style-icon">👾</span><span class="style-name">Pixel Art</span><span class="style-sub">FLUX +
+              LoRA</span></button>
+          <button class="style-chip" data-style="cartoon" onclick="selectStyle(this)"><span
+              class="style-icon">🎨</span><span class="style-name">Cartoon</span><span class="style-sub">DreamShaper
+              8</span></button>
+          <button class="style-chip" data-style="fantasy" onclick="selectStyle(this)"><span
+              class="style-icon">🏰</span><span class="style-name">Fantasy / RPG</span><span
+              class="style-sub">AnyLoRA</span></button>
+          <button class="style-chip" data-style="scifi" onclick="selectStyle(this)"><span
+              class="style-icon">🌆</span><span class="style-name">Sci-Fi</span><span class="style-sub">DreamShaper
+              Lightning</span></button>
+          <button class="style-chip" data-style="3d" onclick="selectStyle(this)"><span class="style-icon">🧊</span><span
+              class="style-name">3D Render</span><span class="style-sub">DreamShaper Lightning</span></button>
+          <button class="style-chip" data-style="nsfw" onclick="selectStyle(this)"><span
+              class="style-icon">🔞</span><span class="style-name">NSFW</span><span class="style-sub">Pony
+              Diffusion</span></button>
         </div>
         <div id="styleKeywordsBar" style="margin-top:10px; display:none;">
-          <span style="font-size:10px; color:var(--text-dim);">Injecting style keywords:</span>
+          <span style="font-size:10px; color:var(--text-dim);">Injecting keywords:</span>
           <span id="styleKeywordsTags"
             style="font-size:11px; color:var(--accent); margin-left:6px; font-family:'SF Mono',monospace;"></span>
           <button onclick="clearStyle()"
             style="float:right; background:none; border:none; color:var(--text-dim); font-size:11px; cursor:pointer; text-decoration:underline;">✕
-            Clear style</button>
+            Clear</button>
         </div>
-      </div>
 
-      <!-- ── POSITIVE PROMPT ── -->
+        <!-- ⚙️ Advanced Settings (collapsed by default) -->
+        <details class="adv-panel">
+          <summary>⚙️ Advanced Settings</summary>
+          <div class="adv-body">
 
+            <div style="margin-bottom:14px;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; margin-bottom:8px;">Model Override
+                <span style="font-weight:400; opacity:0.5;">(auto-selected by style)</span>
+              </div>
+              <div class="model-grid" id="modelGrid">
+                <button class="model-chip active" data-model="flux" data-type="gguf" onclick="selectModel(this)">FLUX
+                  Schnell <span class="badge badge-flux">FLUX</span></button>
+                <button class="model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
+                  onclick="selectModel(this)">Juggernaut XL v9 <span class="badge badge-xl">XL</span></button>
+                <button class="model-chip" data-model="DreamShaperXL_Lightning.safetensors" data-type="sdxl_lightning"
+                  onclick="selectModel(this)">DreamShaper Lightning <span
+                    class="badge badge-speed">4-STEP</span></button>
+                <button class="model-chip" data-model="ponyDiffusionV6XL.safetensors" data-type="sdxl"
+                  onclick="selectModel(this)">Pony Diffusion V6 XL <span class="badge badge-xl">XL</span></button>
+                <button class="model-chip" data-model="AnyLoRA_noVae_fp16-pruned.safetensors" data-type="sd15"
+                  onclick="selectModel(this)">AnyLoRA <span class="badge badge-15">SD1.5</span></button>
+                <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
+                  onclick="selectModel(this)">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
+              </div>
+            </div>
+
+            <div class="prompt-card" style="margin-bottom:14px;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; margin-bottom:6px;">Negative Prompt
+              </div>
+              <textarea id="negativeInput" rows="2"
+                placeholder="blurry, low quality, ugly, distorted face, extra fingers, watermark, nsfw"
+                oninput="updateNegCount()"></textarea>
+              <span class="char-count" id="negCount">0</span>
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600;">Resolution</label>
+                <span id="minSizePill"
+                  style="font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(251,191,36,0.12); color:#fcd34d; border:1px solid rgba(251,191,36,0.2);">Min:
+                  512×512</span>
+              </div>
+              <div class="preset-btns" id="presetBtns"></div>
+            </div>
+
+            <div class="controls-grid" style="margin-bottom:14px;">
+              <div class="control-item">
+                <label>Steps <span class="value-display" id="stepsVal">15</span>
+                  <span class="info-trigger" onclick="toggleInfo('stepsInfo')" title="What is this?">ⓘ</span></label>
+                <input type="range" id="stepsSlider" min="1" max="50" value="15"
+                  oninput="document.getElementById('stepsVal').textContent = this.value">
+                <div class="info-tooltip" id="stepsInfo"><strong>Steps</strong> = denoising iterations.<br><br>• FLUX:
+                  <strong>4–8</strong> &nbsp;• Lightning: <strong>6–10</strong><br>• SDXL/SD1.5: <strong>20–30</strong>
+                </div>
+              </div>
+              <div class="control-item">
+                <label>CFG Scale <span class="value-display" id="cfgVal">7.0</span>
+                  <span class="info-trigger" onclick="toggleInfo('cfgInfo')" title="What is this?">ⓘ</span></label>
+                <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7"
+                  oninput="document.getElementById('cfgVal').textContent = parseFloat(this.value).toFixed(1)">
+                <div class="info-tooltip" id="cfgInfo"><strong>CFG</strong> = prompt adherence.<br><br>• FLUX:
+                  <strong>1.0</strong> &nbsp;• Lightning: <strong>2–3</strong><br>• SDXL: <strong>6–8</strong> &nbsp;•
+                  SD1.5: <strong>7–9</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="seed-row">
+              <label>🎲 Seed</label>
+              <input type="number" id="seedInput" min="0" max="9999999999" value="" placeholder="Random"
+                title="Leave blank for a random seed">
+              <button class="icon-btn" onclick="randomizeSeed()" title="Randomize seed">🔀</button>
+              <button class="icon-btn" id="lockSeedBtn" onclick="lockSeed()" title="Lock last used seed">🔒</button>
+            </div>
+
+          </div><!-- /adv-body -->
+        </details>
+      </div><!-- /card -->
+
+      <!-- ── PROMPT ── -->
       <div class="card prompt-card">
         <div class="card-label">Prompt</div>
         <textarea id="promptInput" rows="4"
@@ -1019,93 +1119,12 @@
         <span class="char-count" id="charCount">0</span>
       </div>
 
-      <!-- ── NEGATIVE PROMPT ── -->
-      <div class="card prompt-card">
-        <div class="card-label">Negative Prompt</div>
-        <textarea id="negativeInput" rows="2"
-          placeholder="blurry, low quality, ugly, distorted face, extra fingers, watermark, nsfw"
-          oninput="updateNegCount()"></textarea>
-        <span class="char-count" id="negCount">0</span>
-      </div>
-
-      <!-- ── PARAMETERS ── -->
-      <div class="card">
-        <div class="card-label">Parameters</div>
-
-        <!-- Resolution Presets (model-aware) -->
-        <div style="margin-bottom:16px;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <label style="font-size:11px; color:var(--text-muted);">Resolution</label>
-            <span id="minSizePill"
-              style="font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(251,191,36,0.12); color:#fcd34d; border:1px solid rgba(251,191,36,0.2);">Min:
-              512×512</span>
-          </div>
-          <div class="preset-btns" id="presetBtns">
-            <!-- populated by JS via updateResolutionPresets() -->
-          </div>
-        </div>
-
-        <div class="controls-grid">
-          <!-- Steps -->
-          <div class="control-item">
-            <label>
-              Steps
-              <span class="value-display" id="stepsVal">15</span>
-              <span class="info-trigger" onclick="toggleInfo('stepsInfo')" title="What is this?">ⓘ</span>
-            </label>
-            <input type="range" id="stepsSlider" min="1" max="50" value="15"
-              oninput="document.getElementById('stepsVal').textContent = this.value">
-            <div class="info-tooltip" id="stepsInfo">
-              <strong>Steps</strong> = how many denoising iterations the AI runs.<br><br>
-              <span style="color:var(--success)">More steps</span> → finer detail, longer wait.<br>
-              <span style="color:var(--warning)">Fewer steps</span> → faster, but may look unfinished.<br><br>
-              <em>Recommended per model:</em><br>
-              • FLUX Schnell: <strong>4–8</strong> (baked-in speed)<br>
-              • Lightning: <strong>6–10</strong><br>
-              • SDXL/SD1.5: <strong>20–30</strong><br>
-              • Beyond 50: almost never useful
-            </div>
-          </div>
-
-          <!-- CFG Scale -->
-          <div class="control-item">
-            <label>
-              CFG Scale
-              <span class="value-display" id="cfgVal">7.0</span>
-              <span class="info-trigger" onclick="toggleInfo('cfgInfo')" title="What is this?">ⓘ</span>
-            </label>
-            <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7"
-              oninput="document.getElementById('cfgVal').textContent = parseFloat(this.value).toFixed(1)">
-            <div class="info-tooltip" id="cfgInfo">
-              <strong>CFG Scale</strong> = how strictly the AI follows your prompt vs. being creative.<br><br>
-              <span style="color:var(--success)">Higher CFG (7–12)</span> → follows prompt closely, but can
-              over-saturate.<br>
-              <span style="color:var(--warning)">Lower CFG (1–3)</span> → more artistic freedom, prompt loosely
-              followed.<br><br>
-              <em>Recommended per model:</em><br>
-              • FLUX Schnell: <strong>1.0</strong> (architecture ignores CFG)<br>
-              • Lightning: <strong>2–3</strong><br>
-              • SDXL: <strong>6–8</strong><br>
-              • SD 1.5: <strong>7–9</strong>
-            </div>
-          </div>
-        </div>
-
-        <!-- Seed Row -->
-        <div class="seed-row">
-          <label>🎲 Seed</label>
-          <input type="number" id="seedInput" min="0" max="9999999999" value="" placeholder="Random"
-            title="Leave blank for a random seed each time">
-          <button class="icon-btn" onclick="randomizeSeed()" title="Randomize seed">🔀</button>
-          <button class="icon-btn" id="lockSeedBtn" onclick="lockSeed()" title="Lock last used seed">🔒</button>
-        </div>
-      </div>
-
       <!-- ── ACTION BUTTONS ── -->
       <div class="action-row">
         <button class="btn-generate" id="generateBtn" onclick="generateImage()">✦ Generate Image</button>
         <button class="btn-download" id="downloadBtn" onclick="downloadImage()" title="Save image">⬇</button>
       </div>
+
 
       <!-- ── STATUS BAR ── -->
       <div class="status-bar" id="statusBar">
@@ -1228,36 +1247,56 @@
           <!-- Populated by JS -->
         </div>
 
-        <div id="poseOverrideContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
-          <!-- Dynamically populated pose overrides -->
-        </div>
+        <!-- ⚙️ Sprite Advanced (collapsed by default) -->
+        <details class="adv-panel">
+          <summary>⚙️ Advanced Generation Settings</summary>
+          <div class="adv-body">
 
-        <div class="controls-grid" style="grid-template-columns: 1fr;">
-          <!-- Frame Count -->
-          <div class="control-item">
-            <label>
-              Smoothness (Frames)
-              <span class="value-display" id="frameCountVal">8</span>
-            </label>
-            <input type="range" id="frameCountSlider" min="2" max="16" step="1" value="8"
-              oninput="document.getElementById('frameCountVal').innerText=this.value">
-          </div>
-
-          <!-- Denoising Strength -->
-          <div class="control-item">
-            <label>
-              Denoising Strength (Change per frame)
-              <span class="value-display" id="denoiseVal">0.55</span>
-            </label>
-            <input type="range" id="denoiseSlider" min="0.1" max="0.8" step="0.05" value="0.55"
-              oninput="document.getElementById('denoiseVal').innerText=this.value">
-            <div style="font-size:10px; color:var(--text-dim); margin-top:4px;">Low = frames stay very close to
-              reference. High = more variation per frame.
-              <strong style="color:var(--warning);"> Since each frame chains off the previous, even 0.4 accumulates
-                significantly over 8 frames.</strong>
+            <!-- Gap 3: Sprite Model Selector -->
+            <div style="margin-bottom:16px;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; margin-bottom:8px;">Sprite Model
+                <span style="font-weight:400; opacity:0.5;">(AnyLoRA recommended for sprites)</span>
+              </div>
+              <div class="sprite-model-grid" id="spriteModelGrid">
+                <button class="sprite-model-chip active" data-model="AnyLoRA_noVae_fp16-pruned.safetensors"
+                  data-type="sd15" onclick="selectSpriteModel(this)">AnyLoRA <span
+                    class="badge badge-15">SD1.5</span></button>
+                <button class="sprite-model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
+                  onclick="selectSpriteModel(this)">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
+                <button class="sprite-model-chip" data-model="DreamShaperXL_Lightning.safetensors"
+                  data-type="sdxl_lightning" onclick="selectSpriteModel(this)">DreamShaper ⚡ <span
+                    class="badge badge-speed">4-STEP</span></button>
+                <button class="sprite-model-chip" data-model="Juggernaut-XL_v9.safetensors" data-type="sdxl"
+                  onclick="selectSpriteModel(this)">Juggernaut XL <span class="badge badge-xl">XL</span></button>
+              </div>
             </div>
-          </div>
-        </div>
+
+            <!-- Pose overrides (dynamically populated) -->
+            <div id="poseOverrideContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+              <!-- Dynamically populated pose overrides -->
+            </div>
+
+            <div class="controls-grid" style="grid-template-columns: 1fr;">
+              <!-- Frame Count -->
+              <div class="control-item">
+                <label>Smoothness (Frames) <span class="value-display" id="frameCountVal">8</span></label>
+                <input type="range" id="frameCountSlider" min="2" max="16" step="1" value="8"
+                  oninput="document.getElementById('frameCountVal').innerText=this.value">
+              </div>
+              <!-- Denoising Strength -->
+              <div class="control-item">
+                <label>Denoising Strength (Change per frame) <span class="value-display"
+                    id="denoiseVal">0.55</span></label>
+                <input type="range" id="denoiseSlider" min="0.1" max="0.8" step="0.05" value="0.55"
+                  oninput="document.getElementById('denoiseVal').innerText=this.value">
+                <div style="font-size:10px; color:var(--text-dim); margin-top:4px;">Low = frames stay close to
+                  reference. High = more movement per frame. <strong style="color:var(--warning);">Each frame chains off
+                    the previous, so even 0.4 accumulates significantly.</strong></div>
+              </div>
+            </div>
+
+          </div><!-- /adv-body -->
+        </details>
 
         <!-- Action buttons: Start + Cancel -->
         <div style="display:flex; gap:8px; margin-top:16px;">
@@ -1267,80 +1306,88 @@
             Cancel</button>
         </div>
       </div>
+      <!-- Action buttons: Start + Cancel -->
+      <div style="display:flex; gap:8px; margin-top:16px;">
+        <button class="btn-generate" id="btnStartAnim" onclick="startAnimationQueue()" disabled style="flex:2;">✦
+          Start Sequential Generation</button>
+        <button class="btn-cancel" id="btnCancelAnim" onclick="cancelAnimationQueue()" style="display:none;">⛔
+          Cancel</button>
+      </div>
+    </div>
 
-      <!-- ── STAGE 3 & 4: TIMELINE & RESULT CANVAS ── -->
-      <div id="stage3Progress" style="display:none; margin-top:16px;">
-        <div class="card">
-          <div class="card-label">Generation Progress</div>
-          <div id="timelineContainer" style="display:flex; flex-direction:column; gap:8px;">
-            <!-- Timeline rows generated by JS -->
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-label">Sprite Sheet Assembly</div>
-          <div
-            style="text-align:center; padding:20px; border:1px dashed var(--border); border-radius:8px; background:rgba(255,255,255,0.02); overflow-x:auto;">
-            <canvas id="spriteCanvas" style="max-width:100%; image-rendering:pixelated; display:none;"></canvas>
-            <p id="canvasEmptyMsg" style="font-size:13px; color:var(--text-dim);">Frames will appear here as they
-              complete</p>
-          </div>
-
-          <div class="action-row" style="margin-top:16px; margin-bottom:0; display:flex; gap:8px;">
-            <button class="btn-download" id="downloadSheetBtn" onclick="downloadSpriteSheet()"
-              style="flex:1; display:none;">⬇ Download Full Sheet (PNG)</button>
-            <button class="btn-download" id="downloadZipBtn" onclick="downloadFramesZip()"
-              style="flex:1; display:none; background:var(--accent-2);">⬇ Download Individual Frames (ZIP)</button>
-          </div>
+    <!-- ── STAGE 3 & 4: TIMELINE & RESULT CANVAS ── -->
+    <div id="stage3Progress" style="display:none; margin-top:16px;">
+      <div class="card">
+        <div class="card-label">Generation Progress</div>
+        <div id="timelineContainer" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Timeline rows generated by JS -->
         </div>
       </div>
 
-    </div><!-- /tab-spritegen -->
-
-    <!-- Per-cell Preview Modal -->
-    <div id="cellPreviewModal"
-      style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
-      <div class="card" style="width: 440px; text-align:center; position:relative;">
-        <button onclick="closeCellPreview()"
-          style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:white; font-size:20px; cursor:pointer;">×</button>
-        <div class="card-label" id="previewModalLabel">Frame Preview</div>
-
-        <!-- Canvas display -->
+      <div class="card">
+        <div class="card-label">Sprite Sheet Assembly</div>
         <div
-          style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; display:inline-block; margin-bottom:12px;">
-          <canvas id="cellPreviewCanvas" style="image-rendering:pixelated; width:200px; height:200px;"></canvas>
+          style="text-align:center; padding:20px; border:1px dashed var(--border); border-radius:8px; background:rgba(255,255,255,0.02); overflow-x:auto;">
+          <canvas id="spriteCanvas" style="max-width:100%; image-rendering:pixelated; display:none;"></canvas>
+          <p id="canvasEmptyMsg" style="font-size:13px; color:var(--text-dim);">Frames will appear here as they
+            complete</p>
         </div>
 
-        <!-- FPS slider (only visible in animation loop mode) -->
-        <div id="fpsControlRow" style="display:none; margin-bottom:12px; font-size:12px; color:var(--text-muted);">
-          <label>Speed: <span id="fpsLabel">6.6</span> fps &nbsp;
-            <input type="range" id="fpsSlider" min="2" max="24" step="1" value="7"
-              style="vertical-align:middle; width:100px;" oninput="updatePreviewFps(this.value)">
-          </label>
-        </div>
-
-        <!-- Single-frame actions -->
-        <div id="modalRetryText" style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">
-          Click ⚠️ Retry to regenerate this frame, or 📋 Copy to grab it.
-        </div>
-
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <!-- Retry (single frame mode only) -->
-          <button class="btn-generate" id="btnRetryCell" onclick="retryActiveCell()"
-            style="width:100%; background:var(--warning); color:#000;">⚠️ Retry This Frame</button>
-
-          <!-- Copy to clipboard (single frame mode) -->
-          <button class="btn-download" id="btnCopyFrame" onclick="copyFrameToClipboard()"
-            style="width:100%; display:none; background:rgba(255,255,255,0.08); border:1px solid var(--border);">📋 Copy
-            Frame to Clipboard</button>
-
-          <!-- GIF export (animation loop mode only) -->
-          <button class="btn-download" id="btnDownloadGif" onclick="exportActiveAnimationGif()"
-            style="display:none; width:100%; background:var(--success); color:#000; font-weight:bold;">⬇ Export as
-            Animated GIF</button>
+        <div class="action-row" style="margin-top:16px; margin-bottom:0; display:flex; gap:8px;">
+          <button class="btn-download" id="downloadSheetBtn" onclick="downloadSpriteSheet()"
+            style="flex:1; display:none;">⬇ Download Full Sheet (PNG)</button>
+          <button class="btn-download" id="downloadZipBtn" onclick="downloadFramesZip()"
+            style="flex:1; display:none; background:var(--accent-2);">⬇ Download Individual Frames (ZIP)</button>
         </div>
       </div>
     </div>
+
+  </div><!-- /tab-spritegen -->
+
+  <!-- Per-cell Preview Modal -->
+  <div id="cellPreviewModal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
+    <div class="card" style="width: 440px; text-align:center; position:relative;">
+      <button onclick="closeCellPreview()"
+        style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:white; font-size:20px; cursor:pointer;">×</button>
+      <div class="card-label" id="previewModalLabel">Frame Preview</div>
+
+      <!-- Canvas display -->
+      <div
+        style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; display:inline-block; margin-bottom:12px;">
+        <canvas id="cellPreviewCanvas" style="image-rendering:pixelated; width:200px; height:200px;"></canvas>
+      </div>
+
+      <!-- FPS slider (only visible in animation loop mode) -->
+      <div id="fpsControlRow" style="display:none; margin-bottom:12px; font-size:12px; color:var(--text-muted);">
+        <label>Speed: <span id="fpsLabel">6.6</span> fps &nbsp;
+          <input type="range" id="fpsSlider" min="2" max="24" step="1" value="7"
+            style="vertical-align:middle; width:100px;" oninput="updatePreviewFps(this.value)">
+        </label>
+      </div>
+
+      <!-- Single-frame actions -->
+      <div id="modalRetryText" style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">
+        Click ⚠️ Retry to regenerate this frame, or 📋 Copy to grab it.
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <!-- Retry (single frame mode only) -->
+        <button class="btn-generate" id="btnRetryCell" onclick="retryActiveCell()"
+          style="width:100%; background:var(--warning); color:#000;">⚠️ Retry This Frame</button>
+
+        <!-- Copy to clipboard (single frame mode) -->
+        <button class="btn-download" id="btnCopyFrame" onclick="copyFrameToClipboard()"
+          style="width:100%; display:none; background:rgba(255,255,255,0.08); border:1px solid var(--border);">📋 Copy
+          Frame to Clipboard</button>
+
+        <!-- GIF export (animation loop mode only) -->
+        <button class="btn-download" id="btnDownloadGif" onclick="exportActiveAnimationGif()"
+          style="display:none; width:100%; background:var(--success); color:#000; font-weight:bold;">⬇ Export as
+          Animated GIF</button>
+      </div>
+    </div>
+  </div>
 
   </div><!-- /app-wrapper -->
 
@@ -1528,10 +1575,15 @@
     }
 
     function setProgress(pc) {
-      const bar = document.getElementById('progressBar');
-      if (bar) bar.style.width = `${pc}%`;
-      const sBar = document.getElementById('spriteProgressBar');
-      if (sBar) sBar.style.width = `${pc}%`;
+      // Improvement 5: Route progress bar update to whichever tab is currently visible
+      const isSpriteTab = document.getElementById('tab-spritegen').classList.contains('active');
+      if (isSpriteTab) {
+        const sBar = document.getElementById('spriteProgressBar');
+        if (sBar) sBar.style.width = `${pc}%`;
+      } else {
+        const bar = document.getElementById('progressBar');
+        if (bar) bar.style.width = `${pc}%`;
+      }
     }
 
     function showProgress(visible) {
@@ -1846,8 +1898,12 @@
     //  IMAGE META UPDATE
     // ============================================================
     function updateImageMeta() {
+      // Improvement 4: Read actual pixel size from the loaded image element
+      const imgEl = document.getElementById('resultImage');
+      const actualW = imgEl.naturalWidth || imgWidth;
+      const actualH = imgEl.naturalHeight || imgHeight;
       document.getElementById('metaModel').textContent = selectedModel.name.replace('.safetensors', '').replace('flux', 'FLUX Schnell');
-      document.getElementById('metaRes').textContent = `${imgWidth}×${imgHeight}`;
+      document.getElementById('metaRes').textContent = `${actualW}×${actualH}`;
       document.getElementById('metaSteps').textContent = `${document.getElementById('stepsSlider').value} steps`;
       document.getElementById('metaCfg').textContent = `CFG ${parseFloat(document.getElementById('cfgSlider').value).toFixed(1)}`;
       document.getElementById('metaSeed').textContent = `seed: ${lastSeed}`;
@@ -2240,6 +2296,23 @@
 
     let selectedAnimations = [];
     let referenceImageFilename = null;
+
+    // Gap 3: Sprite-specific model selector (defaults to AnyLoRA, best for SD1.5 sprites)
+    let selectedSpriteModel = {
+      name: 'AnyLoRA_noVae_fp16-pruned.safetensors',
+      type: 'sd15'
+    };
+
+    function selectSpriteModel(el) {
+      document.querySelectorAll('#spriteModelGrid .sprite-model-chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedSpriteModel = { name: el.dataset.model, type: el.dataset.type };
+    }
+
+    // Returns the sprite-specific model (overrides Tab 1 selectedModel for sprite gen)
+    function getSpriteModel() {
+      return selectedSpriteModel;
+    }
 
     function initAnimationPicker() {
       const container = document.getElementById('animationPicker');
