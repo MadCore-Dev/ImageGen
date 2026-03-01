@@ -822,6 +822,58 @@
     }
 
     /* ============================================================
+       RECOVERY BANNER
+    ============================================================ */
+    #recoveryBanner {
+      display: none;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(79, 143, 255, 0.08) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    #recoveryBanner .recovery-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--warning);
+      margin-bottom: 6px;
+    }
+
+    #recoveryBanner .recovery-msg {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    #recoveryBanner .recovery-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    #recoveryBanner .recovery-actions button {
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    #btnResumeSession {
+      background: var(--warning);
+      color: #000;
+    }
+
+    #btnDismissSession {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border) !important;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
        RESPONSIVE
     ============================================================ */
     @media (max-width: 600px) {
@@ -1094,6 +1146,18 @@
 
     <!-- ── TAB 2: SPRITE SHEET GENERATOR ── -->
     <div id="tab-spritegen" class="tab-content">
+
+      <!-- ⚡ SESSION RECOVERY BANNER -->
+      <div id="recoveryBanner">
+        <div class="recovery-header">⚡ Interrupted Session Detected</div>
+        <div class="recovery-msg" id="recoveryMsg">A previous sprite generation was interrupted. Resume to continue
+          watching it.</div>
+        <div class="recovery-actions">
+          <button id="btnResumeSession" onclick="resumeSession()">&#9654; Resume Session</button>
+          <button id="btnDismissSession" onclick="dismissSession()">&#x2715; Dismiss</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-label">Stage 1: Reference Character</div>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Describe the character you want to
@@ -2189,6 +2253,288 @@
       });
     }
 
+    // ============================================================
+    //  SESSION PERSISTENCE (localStorage-based recovery)
+    // ============================================================
+    const SESSION_KEY = 'epoch_sprite_session';
+    const SESSION_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+    function saveSession(updates) {
+      try {
+        const existing = loadSession(false) || { version: 1, timestamp: Date.now(), completedFrames: {} };
+        const merged = Object.assign(existing, updates, { timestamp: Date.now() });
+        localStorage.setItem(SESSION_KEY, JSON.stringify(merged));
+      } catch (e) { console.warn('Session save failed:', e); }
+    }
+
+    function loadSession(checkAge = true) {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (!raw) return null;
+        const s = JSON.parse(raw);
+        if (checkAge && Date.now() - s.timestamp > SESSION_MAX_AGE_MS) {
+          localStorage.removeItem(SESSION_KEY);
+          return null;
+        }
+        return s;
+      } catch (e) { return null; }
+    }
+
+    function clearSession() {
+      localStorage.removeItem(SESSION_KEY);
+    }
+
+    function dismissSession() {
+      clearSession();
+      document.getElementById('recoveryBanner').style.display = 'none';
+    }
+
+    function checkForRecovery() {
+      const s = loadSession();
+      if (!s) return;
+
+      // Build a summary string
+      const lines = (s.selectedAnimations || []).map(id => {
+        const frames = s.completedFrames?.[id] || [];
+        const done = frames.filter(Boolean).length;
+        return `${id} (${done}/${s.framesCount || '?'} frames)`;
+      });
+      const activePart = s.activePromptId
+        ? ` \u2014 Frame ${(s.activeFrameIndex ?? 0) + 1} of ${s.activeAnimId} still rendering...`
+        : '';
+
+      document.getElementById('recoveryMsg').innerHTML =
+        `<strong>${lines.join(', ')}</strong>${activePart}<br>` +
+        `<span style="opacity:0.6;">Session from ${new Date(s.timestamp).toLocaleTimeString()}</span>`;
+      document.getElementById('recoveryBanner').style.display = 'block';
+    }
+
+    async function resumeSession() {
+      const s = loadSession(false);
+      if (!s) { dismissSession(); return; }
+
+      document.getElementById('recoveryBanner').style.display = 'none';
+      document.getElementById('btnResumeSession').disabled = true;
+
+      // --- 1. Restore global config state ---
+      currentAnimationGrid = s.selectedAnimations || [];
+      activeSpriteSize = s.spriteSize || 64;
+
+      // --- 2. Restore canvas from snapshot ---
+      const canvas = document.getElementById('spriteCanvas');
+      const framesCount = s.framesCount || 8;
+      canvas.width = activeSpriteSize * framesCount;
+      canvas.height = activeSpriteSize * (s.selectedAnimations || []).length;
+      canvas.style.display = 'block';
+      document.getElementById('canvasEmptyMsg').style.display = 'none';
+      canvasCtx = canvas.getContext('2d');
+
+      if (s.canvasData) {
+        await new Promise(resolve => {
+          const img = new Image();
+          img.onload = () => { canvasCtx.drawImage(img, 0, 0); resolve(); };
+          img.onerror = resolve;
+          img.src = s.canvasData;
+        });
+      }
+
+      // --- 3. Rebuild timeline rows ---
+      document.getElementById('stage3Progress').style.display = 'block';
+      const timelineContainer = document.getElementById('timelineContainer');
+      timelineContainer.innerHTML = '';
+      const rowStatuses = {};
+
+      (s.selectedAnimations || []).forEach((animId, rowIndex) => {
+        const preset = ANIMATION_PRESETS.find(a => a.id === animId);
+        const frames = s.completedFrames?.[animId] || [];
+        const done = frames.filter(Boolean).length;
+
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'timeline-row';
+        rowDiv.style.cssText = 'display:flex; align-items:center; gap:8px; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px; font-size:12px;';
+
+        const label = document.createElement('div');
+        label.style.cssText = 'width:80px; font-weight:bold;';
+        label.innerText = preset?.name || animId;
+        rowDiv.appendChild(label);
+
+        const framesDiv = document.createElement('div');
+        framesDiv.id = `timeline_${animId}`;
+        framesDiv.style.cssText = 'letter-spacing:2px; flex:1;';
+        // Render what we know: done + active or pending
+        framesDiv.innerText = '\u2705'.repeat(done) + '\u2b1c'.repeat(framesCount - done);
+        rowDiv.appendChild(framesDiv);
+
+        const playBtn = document.createElement('button');
+        playBtn.innerText = '\u25b6\ufe0f Play';
+        playBtn.style.cssText = 'padding:2px 8px; font-size:10px; cursor:pointer; background:var(--accent-glow); border:1px solid var(--accent); color:var(--accent); border-radius:4px;';
+        playBtn.style.display = done === framesCount ? 'block' : 'none';
+        playBtn.onclick = () => playAnimationLoop(animId, rowIndex, framesCount);
+        rowDiv.appendChild(playBtn);
+
+        const retryRowBtn = document.createElement('button');
+        retryRowBtn.innerText = '\u267b\ufe0f';
+        retryRowBtn.title = 'Retry entire row';
+        retryRowBtn.style.cssText = 'padding:2px 6px; font-size:10px; cursor:pointer; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:4px;';
+        retryRowBtn.style.display = done > 0 ? 'block' : 'none';
+        retryRowBtn.onclick = () => retryAnimationRow(animId, rowIndex, framesCount);
+        rowDiv.appendChild(retryRowBtn);
+
+        timelineContainer.appendChild(rowDiv);
+        rowStatuses[animId] = { div: framesDiv, playBtn, retryRowBtn, pose: preset?.pose };
+      });
+
+      // Show downloads if all rows done
+      const allDone = (s.selectedAnimations || []).every(id => {
+        const frames = s.completedFrames?.[id] || [];
+        return frames.filter(Boolean).length === framesCount;
+      });
+      if (allDone) {
+        document.getElementById('downloadSheetBtn').style.display = 'block';
+        document.getElementById('downloadZipBtn').style.display = 'block';
+        setSpriteStatus('\u2728 Session restored — generation was complete!', 'success');
+        return;
+      }
+
+      // --- 4. Reconnect to active poll or restart from missing frame ---
+      baseRefUploadName = s.baseRefUploadName || null;
+      const activeAnimId = s.activeAnimId;
+      const activePromptId = s.activePromptId;
+      const startFrameIndex = s.activeFrameIndex ?? 0;
+
+      if (!baseRefUploadName) {
+        setSpriteStatus('\u26a0\ufe0f Cannot resume — base reference upload name missing. Please regenerate.', 'error');
+        return;
+      }
+
+      setSpriteStatus('\u23f3 Reconnecting to active generation...', 'active');
+      showSpriteProgress(true);
+      initWebSocket();
+
+      try {
+        let currentFrameRefImg = s.lastFrameRefImg || baseRefUploadName;
+
+        // If there is an active prompt_id, reconnect to it first
+        if (activePromptId) {
+          const rowIndex = (s.selectedAnimations || []).indexOf(activeAnimId);
+          setSpriteStatus(`Reconnecting to ${activeAnimId} frame ${startFrameIndex + 1}...`, 'active');
+          try {
+            const filename = await pollHistory(activePromptId);
+            const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+            await new Promise((resolve, reject) => {
+              const img = new Image(); img.crossOrigin = 'Anonymous';
+              img.onload = () => {
+                canvasCtx.drawImage(img, startFrameIndex * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+                resolve();
+              };
+              img.onerror = reject; img.src = imgUrl;
+            });
+            // Update completed frames
+            const updatedFrames = s.completedFrames || {};
+            if (!updatedFrames[activeAnimId]) updatedFrames[activeAnimId] = [];
+            updatedFrames[activeAnimId][startFrameIndex] = filename;
+            // Re-upload as recursive ref
+            const blobRes = await fetch(imgUrl);
+            const blob = await blobRes.blob();
+            currentFrameRefImg = await uploadImageToComfy(blob, `recur_resume_${activeAnimId}_${startFrameIndex}.png`);
+            saveSession({ completedFrames: updatedFrames, activePromptId: null, canvasData: canvas.toDataURL() });
+
+            if (rowStatuses[activeAnimId]) {
+              const doneNow = updatedFrames[activeAnimId].filter(Boolean).length;
+              rowStatuses[activeAnimId].div.innerText = '\u2705'.repeat(doneNow) + '\u2b1c'.repeat(framesCount - doneNow);
+            }
+          } catch (pollErr) {
+            console.warn('Reconnect poll failed:', pollErr);
+            // Continue from next frame anyway
+          }
+        }
+
+        // --- 5. Resume remaining frames for each animation ---
+        const resumeFromAnimIndex = (s.selectedAnimations || []).indexOf(activeAnimId);
+        const animationsToRun = (s.selectedAnimations || []).slice(resumeFromAnimIndex);
+
+        for (let ri = 0; ri < animationsToRun.length; ri++) {
+          const animId = animationsToRun[ri];
+          const rowIndex = (s.selectedAnimations || []).indexOf(animId);
+          const preset = ANIMATION_PRESETS.find(p => p.id === animId);
+          const completedArr = s.completedFrames?.[animId] || [];
+          const startC = ri === 0 ? Math.min(startFrameIndex + 1, framesCount) : 0;
+
+          const getFramePrompt = (fi) => preset?.keyframes?.length > 0
+            ? `${s.basePositivePrompt}, ${preset.keyframes[fi % preset.keyframes.length]}`
+            : `${s.basePositivePrompt}, ${preset?.pose || ''}`;
+
+          for (let c = startC; c < framesCount; c++) {
+            if (cancelGenerationFlag) break;
+
+            if (rowStatuses[animId]) {
+              const done = completedArr.filter(Boolean).length;
+              rowStatuses[animId].div.innerText = '\u2705'.repeat(done) + '\u23f3' + '\u2b1c'.repeat(framesCount - done - 1);
+            }
+
+            setSpriteStatus(`Resuming ${animId} \u2014 Frame ${c + 1}/${framesCount}...`, 'active');
+            saveSession({ activeAnimId: animId, activeFrameIndex: c });
+
+            try {
+              let steps = 15, cfg = 7.0;
+              if (selectedModel.type === 'sdxl_lightning') { steps = 4; cfg = 2.0; }
+              const wd = buildImg2ImgWorkflow(
+                currentFrameRefImg, getFramePrompt(c), s.baseNegativePrompt || '',
+                { name: selectedModel.name, type: selectedModel.type, steps, cfg, denoise: s.denoise || 0.55 }
+              );
+              const res = await fetch(`http://${COMFY_API}/prompt`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: wd, client_id: CLIENT_ID })
+              });
+              if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
+              const { prompt_id } = await res.json();
+              saveSession({ activePromptId: prompt_id, activeFrameIndex: c });
+              const filename = await pollHistory(prompt_id);
+              const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+              await new Promise((resolve, reject) => {
+                const img = new Image(); img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                  canvasCtx.drawImage(img, c * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+                  resolve();
+                };
+                img.onerror = reject; img.src = imgUrl;
+              });
+              if (!completedArr[animId]) completedArr[animId] = [];
+              completedArr[c] = filename;
+              const blobRes2 = await fetch(imgUrl);
+              const blob2 = await blobRes2.blob();
+              currentFrameRefImg = await uploadImageToComfy(blob2, `recur_resume_${animId}_${c}.png`);
+              saveSession({ activePromptId: null, completedFrames: { ...s.completedFrames, [animId]: completedArr }, canvasData: canvas.toDataURL() });
+              if (rowStatuses[animId]) {
+                const doneN = completedArr.filter(Boolean).length;
+                rowStatuses[animId].div.innerText = '\u2705'.repeat(doneN) + '\u2b1c'.repeat(framesCount - doneN);
+              }
+            } catch (err) {
+              console.error(err);
+              setSpriteStatus(`Error resuming ${animId} frame ${c + 1}: ${err.message}`, 'error');
+            }
+          }
+
+          if (rowStatuses[animId]) {
+            rowStatuses[animId].playBtn.style.display = 'block';
+            rowStatuses[animId].retryRowBtn.style.display = 'block';
+          }
+          currentFrameRefImg = baseRefUploadName; // reset for next animation row
+        }
+
+        clearSession();
+        setSpriteStatus('\u2728 Session fully resumed and complete!', 'success');
+        showSpriteProgress(false);
+        document.getElementById('downloadSheetBtn').style.display = 'block';
+        document.getElementById('downloadZipBtn').style.display = 'block';
+
+      } catch (err) {
+        console.error('Resume failed:', err);
+        setSpriteStatus(`\u274c Resume error: ${err.message}`, 'error');
+        showSpriteProgress(false);
+      }
+    }
+
     function getCheckedAnimIds() {
       const activeBtns = document.querySelectorAll('#animationPicker .preset-btn.active');
       return Array.from(activeBtns).map(btn => ANIMATION_PRESETS.find(p => p.name === btn.innerText).id);
@@ -2345,6 +2691,28 @@
         }
       }
 
+      // 💾 Save initial session config so recovery is possible from the first frame
+      const poseOverrides = {};
+      selectedAnims.forEach(id => {
+        const el = document.getElementById(`poseOverride_${id}`);
+        if (el) poseOverrides[id] = el.value.trim();
+      });
+      saveSession({
+        selectedAnimations: selectedAnims,
+        framesCount,
+        denoise,
+        spriteSize: activeSpriteSize,
+        basePositivePrompt,
+        baseNegativePrompt,
+        baseRefUploadName,
+        poseOverrides,
+        completedFrames: Object.fromEntries(selectedAnims.map(id => [id, []])),
+        activePromptId: null,
+        activeAnimId: selectedAnims[0],
+        activeFrameIndex: 0,
+        lastFrameRefImg: baseRefUploadName
+      });
+
       // 2. Setup Timeline UI Rows
       const rowStatuses = {};
       selectedAnimations.forEach((animId, rowIndex) => {
@@ -2462,6 +2830,9 @@
             if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
             const data = await res.json();
 
+            // 💾 Save the prompt_id BEFORE polling so recovery can reconnect
+            saveSession({ activeAnimId: animId, activeFrameIndex: c, activePromptId: data.prompt_id });
+
             // Wait for generation
             const filename = await pollHistory(data.prompt_id);
             const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
@@ -2484,6 +2855,20 @@
             const newlyGeneratedBlobRes = await fetch(imgUrl);
             const newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
             currentFrameRefImg = await uploadImageToComfy(newlyGeneratedBlob, `recur_${animId}_${c}_${Date.now()}.png`);
+
+            // 💾 Save frame result + canvas snapshot after each successful draw
+            const sessionState = loadSession(false);
+            if (sessionState) {
+              const cf = sessionState.completedFrames || {};
+              if (!cf[animId]) cf[animId] = [];
+              cf[animId][c] = filename;
+              saveSession({
+                completedFrames: cf,
+                activePromptId: null,
+                lastFrameRefImg: currentFrameRefImg,
+                canvasData: document.getElementById('spriteCanvas').toDataURL()
+              });
+            }
 
             // Update timeline: ✅ for completed
             timelineStr = '✅'.repeat(c + 1) + '⬜'.repeat(framesCount - c - 1);
@@ -2512,6 +2897,8 @@
       btn.textContent = '✦ Start Sequential Generation';
       document.getElementById('btnCancelAnim').style.display = 'none';
       cancelGenerationFlag = false;
+      // 💾 Clear session on completion so there's no stale recovery banner next time
+      clearSession();
       if (!wasCancelled) {
         document.getElementById('downloadSheetBtn').style.display = 'block';
         document.getElementById('downloadZipBtn').style.display = 'block';
@@ -2835,6 +3222,17 @@
         setSpriteStatus(`Error retrying frame: ${err.message}`, 'error');
         showSpriteProgress(false);
       }
+    }
+
+    // ============================================================
+    //  STARTUP: check for any interrupted session on page load
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      checkForRecovery();
+    });
+    // Also check immediately in case DOMContentLoaded already fired
+    if (document.readyState !== 'loading') {
+      checkForRecovery();
     }
 
   </script>
