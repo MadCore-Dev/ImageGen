@@ -297,6 +297,58 @@
     }
 
     /* ============================================================
+       ART STYLE GRID
+    ============================================================ */
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .style-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+      gap: 4px;
+      text-align: center;
+    }
+
+    .style-chip:hover {
+      background: rgba(79, 143, 255, 0.08);
+      border-color: rgba(79, 143, 255, 0.3);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+
+    .style-chip.active {
+      background: rgba(79, 143, 255, 0.16);
+      border-color: var(--accent);
+      color: var(--text-primary);
+      box-shadow: 0 0 12px rgba(79, 143, 255, 0.2);
+    }
+
+    .style-chip .style-icon {
+      font-size: 22px;
+    }
+
+    .style-chip .style-name {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .style-chip .style-sub {
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+
+    /* ============================================================
        INFO TRIGGER & TOOLTIP
     ============================================================ */
     .info-trigger {
@@ -741,7 +793,80 @@
       </div>
     </div>
 
+    <!-- ── ART STYLE SELECTOR ── -->
+    <div class="card">
+      <div class="card-label">Art Style <span
+          style="color:var(--text-dim); font-weight:400; font-size:10px; text-transform:none; letter-spacing:0; margin-left:4px;">→
+          auto-selects best model + injects prompt keywords</span></div>
+      <div class="style-grid" id="styleGrid">
+
+        <button class="style-chip" data-style="photorealistic" onclick="selectStyle(this)">
+          <span class="style-icon">📸</span>
+          <span class="style-name">Photorealistic</span>
+          <span class="style-sub">Juggernaut XL</span>
+        </button>
+
+        <button class="style-chip" data-style="portrait" onclick="selectStyle(this)">
+          <span class="style-icon">🧑</span>
+          <span class="style-name">Portrait / Headshot</span>
+          <span class="style-sub">Juggernaut XL</span>
+        </button>
+
+        <button class="style-chip" data-style="anime" onclick="selectStyle(this)">
+          <span class="style-icon">🌸</span>
+          <span class="style-name">Anime</span>
+          <span class="style-sub">Pony Diffusion</span>
+        </button>
+
+        <button class="style-chip" data-style="pixel" onclick="selectStyle(this)">
+          <span class="style-icon">👾</span>
+          <span class="style-name">Pixel Art</span>
+          <span class="style-sub">FLUX + LoRA</span>
+        </button>
+
+        <button class="style-chip" data-style="cartoon" onclick="selectStyle(this)">
+          <span class="style-icon">🎨</span>
+          <span class="style-name">Cartoon / Illustration</span>
+          <span class="style-sub">DreamShaper 8</span>
+        </button>
+
+        <button class="style-chip" data-style="fantasy" onclick="selectStyle(this)">
+          <span class="style-icon">🏰</span>
+          <span class="style-name">Fantasy / RPG</span>
+          <span class="style-sub">AnyLoRA</span>
+        </button>
+
+        <button class="style-chip" data-style="scifi" onclick="selectStyle(this)">
+          <span class="style-icon">🌆</span>
+          <span class="style-name">Sci-Fi / Cyberpunk</span>
+          <span class="style-sub">DreamShaper Lightning</span>
+        </button>
+
+        <button class="style-chip" data-style="3d" onclick="selectStyle(this)">
+          <span class="style-icon">🧊</span>
+          <span class="style-name">3D Render</span>
+          <span class="style-sub">DreamShaper Lightning</span>
+        </button>
+
+        <button class="style-chip" data-style="nsfw" onclick="selectStyle(this)">
+          <span class="style-icon">🔞</span>
+          <span class="style-name">NSFW / Uncensored</span>
+          <span class="style-sub">Pony Diffusion</span>
+        </button>
+
+      </div>
+      <div id="styleKeywordsBar" style="margin-top:10px; display:none;">
+        <span style="font-size:10px; color:var(--text-dim);">Injecting style keywords:</span>
+        <span id="styleKeywordsTags"
+          style="font-size:11px; color:var(--accent); margin-left:6px; font-family:'SF Mono',monospace;"></span>
+        <button onclick="clearStyle()"
+          style="float:right; background:none; border:none; color:var(--text-dim); font-size:11px; cursor:pointer; text-decoration:underline;">✕
+          Clear style</button>
+      </div>
+    </div>
+
     <!-- ── POSITIVE PROMPT ── -->
+
     <div class="card prompt-card">
       <div class="card-label">Prompt</div>
       <textarea id="promptInput" rows="4"
@@ -1159,8 +1284,16 @@
     //  MAIN GENERATE FUNCTION
     // ============================================================
     async function generateImage() {
-      const positivePrompt = document.getElementById('promptInput').value.trim();
-      const negativePrompt = document.getElementById('negativeInput').value.trim();
+      const userPositive = document.getElementById('promptInput').value.trim();
+      const userNegative = document.getElementById('negativeInput').value.trim();
+
+      // Merge style keywords silently
+      const positivePrompt = activeStyleKw.positive
+        ? `${userPositive}, ${activeStyleKw.positive}`
+        : userPositive;
+      const negativePrompt = activeStyleKw.negative
+        ? `${userNegative}${userNegative ? ', ' : ''}${activeStyleKw.negative}`
+        : userNegative;
 
       if (!positivePrompt) {
         setStatus('Please enter a prompt first.', 'error');
@@ -1275,6 +1408,105 @@
     function toggleInfo(id) {
       const el = document.getElementById(id);
       el.classList.toggle('visible');
+    }
+
+    // ============================================================
+    //  ART STYLE ROUTING TABLE
+    // ============================================================
+    const STYLE_MAP = {
+      photorealistic: {
+        modelName: 'Juggernaut-XL_v9.safetensors',
+        modelType: 'sdxl',
+        positiveKw: 'photorealistic, hyperrealistic, RAW photo, sharp focus, 8k uhd, DSLR, soft natural lighting',
+        negativeKw: 'painting, drawing, cartoon, anime, CGI, unrealistic',
+        chip: null
+      },
+      portrait: {
+        modelName: 'Juggernaut-XL_v9.safetensors',
+        modelType: 'sdxl',
+        positiveKw: 'portrait, headshot, bokeh, shallow depth of field, studio lighting, photorealistic, detailed skin',
+        negativeKw: 'full body, landscape, cartoon, painting',
+        chip: null
+      },
+      anime: {
+        modelName: 'ponyDiffusionV6XL.safetensors',
+        modelType: 'sdxl',
+        positiveKw: 'score_9, score_8_up, anime, manga, 2D, cel shading, clean lineart, vibrant colors',
+        negativeKw: 'photorealistic, 3d render, blurry, low quality',
+        chip: null
+      },
+      pixel: {
+        modelName: 'flux',
+        modelType: 'gguf',
+        positiveKw: 'pixel art, 16-bit, retro game sprite, pixelated, limited color palette',
+        negativeKw: 'photorealistic, blurry, anti-aliased, smooth',
+        chip: null
+      },
+      cartoon: {
+        modelName: 'DreamShaper_8_pruned.safetensors',
+        modelType: 'sd15',
+        positiveKw: 'cartoon, digital illustration, vibrant colors, clean lines, concept art, artstation',
+        negativeKw: 'photorealistic, photo, blurry, noisy',
+        chip: null
+      },
+      fantasy: {
+        modelName: 'AnyLoRA_noVae_fp16-pruned.safetensors',
+        modelType: 'sd15',
+        positiveKw: 'fantasy art, epic composition, detailed armor, magical atmosphere, intricate, D&D',
+        negativeKw: 'modern, sci-fi, photorealistic, low quality',
+        chip: null
+      },
+      scifi: {
+        modelName: 'DreamShaperXL_Lightning.safetensors',
+        modelType: 'sdxl_lightning',
+        positiveKw: 'cyberpunk, neon lights, futuristic city, sci-fi, octane render, cinematic',
+        negativeKw: 'fantasy, medieval, low quality, blurry',
+        chip: null
+      },
+      '3d': {
+        modelName: 'DreamShaperXL_Lightning.safetensors',
+        modelType: 'sdxl_lightning',
+        positiveKw: '3D render, CGI, octane render, volumetric lighting, blender, hyperdetailed, studio render',
+        negativeKw: 'cartoon, anime, painting, sketch, 2D',
+        chip: null
+      },
+      nsfw: {
+        modelName: 'ponyDiffusionV6XL.safetensors',
+        modelType: 'sdxl',
+        positiveKw: 'score_9, score_8_up, score_7_up, uncensored, explicit',
+        negativeKw: 'score_1, score_2, score_3, low quality, blurry',
+        chip: null
+      }
+    };
+
+    let activeStyleKw = { positive: '', negative: '' };
+
+    function selectStyle(chip) {
+      // Deactivate previous
+      document.querySelectorAll('.style-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+
+      const spec = STYLE_MAP[chip.dataset.style];
+      if (!spec) return;
+
+      activeStyleKw = { positive: spec.positiveKw, negative: spec.negativeKw };
+
+      // Auto-switch model
+      const targetChip = document.querySelector(
+        `.model-chip[data-model="${spec.modelName}"]`
+      );
+      if (targetChip) selectModel(targetChip);
+
+      // Show keyword bar
+      document.getElementById('styleKeywordsTags').textContent = spec.positiveKw;
+      document.getElementById('styleKeywordsBar').style.display = 'block';
+    }
+
+    function clearStyle() {
+      document.querySelectorAll('.style-chip').forEach(c => c.classList.remove('active'));
+      activeStyleKw = { positive: '', negative: '' };
+      document.getElementById('styleKeywordsBar').style.display = 'none';
+      document.getElementById('styleKeywordsTags').textContent = '';
     }
 
     // ============================================================
