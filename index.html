@@ -1757,6 +1757,16 @@
                 <button class="model-chip" data-model="DreamShaper_8_pruned.safetensors" data-type="sd15"
                   onclick="selectModel(this)">DreamShaper 8 <span class="badge badge-15">SD1.5</span></button>
               </div>
+
+              <!-- fix #23: LoRA support -->
+              <div style="margin-top:14px;">
+                <div style="font-size:11px; color:var(--text-muted); font-weight:600; margin-bottom:6px;">LoRA (FLUX /
+                  GGUF Only)</div>
+                <input type="text" id="loraInput" placeholder="example_lora.safetensors"
+                  style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-family: 'SF Mono', monospace; font-size: 11px;">
+                <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Leave blank if not using a LoRA.
+                  Applied at strength 1.0.</div>
+              </div>
             </div>
 
             <div class="prompt-card" style="margin-bottom:14px;">
@@ -2627,12 +2637,13 @@
       const cfg = opts.cfg !== undefined ? opts.cfg : parseFloat(document.getElementById('cfgSlider').value);
       const w = opts.width || imgWidth;
       const h = opts.height || imgHeight;
+      const loraName = document.getElementById('loraInput')?.value.trim();
 
       lastSeed = seed;
 
       if (type === 'gguf') {
         // FLUX GGUF workflow — filenames from MODEL_FILES constants
-        return {
+        const flow = {
           "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": MODEL_FILES.flux.unet } },
           "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": MODEL_FILES.flux.clip1, "clip_name2": MODEL_FILES.flux.clip2, "type": "flux" } },
           "3": { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.flux.vae } },
@@ -2643,6 +2654,16 @@
           "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
           "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_gen", "images": ["7", 0] } }
         };
+
+        // fix #23: inject LoRA loader for GGUF
+        if (loraName) {
+          flow["20"] = { "class_type": "LoraLoader", "inputs": { "lora_name": loraName, "strength_model": 1.0, "strength_clip": 1.0, "model": ["1", 0], "clip": ["2", 0] } };
+          flow["6"].inputs.model = ["20", 0];
+          flow["4"].inputs.clip = ["20", 1];
+          flow["9"].inputs.clip = ["20", 1];
+        }
+
+        return flow;
       } else {
         // Standard checkpoint (SD 1.5 / SDXL / Lightning)
         const isSD15 = type === 'sd15';
@@ -2673,10 +2694,11 @@
       const steps = opts.steps || 15;
       const cfg = opts.cfg || 7.0;
       const denoise = opts.denoise !== undefined ? opts.denoise : parseFloat(document.getElementById('denoiseSlider')?.value || 0.55);
+      const loraName = document.getElementById('loraInput')?.value.trim();
 
       if (type === 'gguf') {
         // FLUX img2img — filenames from MODEL_FILES constants
-        return {
+        const flow = {
           "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": MODEL_FILES.flux.unet } },
           "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": MODEL_FILES.flux.clip1, "clip_name2": MODEL_FILES.flux.clip2, "type": "flux" } },
           "3": { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.flux.vae } },
@@ -2688,6 +2710,16 @@
           "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
           "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_anim", "images": ["7", 0] } }
         };
+
+        // fix #23: inject LoRA loader for GGUF
+        if (loraName) {
+          flow["20"] = { "class_type": "LoraLoader", "inputs": { "lora_name": loraName, "strength_model": 1.0, "strength_clip": 1.0, "model": ["1", 0], "clip": ["2", 0] } };
+          flow["6"].inputs.model = ["20", 0];
+          flow["4"].inputs.clip = ["20", 1];
+          flow["9"].inputs.clip = ["20", 1];
+        }
+
+        return flow;
       } else {
         // SD1.5 / SDXL img2img
         const isSD15 = type === 'sd15';
@@ -4011,7 +4043,8 @@
         activePromptId: null,
         activeAnimId: selectedAnims[0],
         activeFrameIndex: 0,
-        lastFrameRefImg: baseRefUploadName
+        lastFrameRefImg: baseRefUploadName,
+        loraName: document.getElementById('loraInput')?.value.trim() || ''
       });
 
       // 2. Setup Timeline UI Rows — fix #8: use selectedAnims (local), not selectedAnimations (stale global)
@@ -4298,7 +4331,8 @@
         baseNegativePrompt: session?.baseNegativePrompt || '',
         poseOverrides: session?.poseOverrides || {},
         completedFrames: session?.completedFrames || {},
-        baseRefUploadName: session?.baseRefUploadName || null
+        baseRefUploadName: session?.baseRefUploadName || null,
+        loraName: session?.loraName || document.getElementById('loraInput')?.value.trim() || ''
       };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
@@ -4319,6 +4353,13 @@
           const data = JSON.parse(e.target.result);
           if (!data.selectedAnimations || !data.framesCount) throw new Error('Invalid session file — missing required fields.');
           saveSession(data);
+
+          // fix #23: restore LoRA input if present
+          if (data.loraName !== undefined) {
+            const loraEl = document.getElementById('loraInput');
+            if (loraEl) loraEl.value = data.loraName;
+          }
+
           setSpriteStatus('📥 Session JSON imported! Tap Resume to restore.', 'success');
           document.getElementById('recoveryBanner').style.display = 'block';
         } catch (err) {
