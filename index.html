@@ -2628,7 +2628,22 @@
     // ============================================================
     //  WORKFLOW BUILDERS (model-aware routing)
     // ============================================================
-    function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
+    let _workflowCache = {};
+    async function loadWorkflowTemplate(name) {
+      if (_workflowCache[name]) return JSON.parse(JSON.stringify(_workflowCache[name]));
+      try {
+        const res = await fetch(`workflows/${name}.json`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        _workflowCache[name] = data;
+        return JSON.parse(JSON.stringify(data));
+      } catch (err) {
+        console.error(`Failed to load workflow template ${name}:`, err);
+        throw err;
+      }
+    }
+
+    async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
       const type = opts.type || selectedModel.type;
       const model = opts.name || selectedModel.name;
       const seed = opts.seed !== undefined ? opts.seed : (parseInt(document.getElementById('seedInput').value) ||
@@ -2642,18 +2657,18 @@
       lastSeed = seed;
 
       if (type === 'gguf') {
-        // FLUX GGUF workflow — filenames from MODEL_FILES constants
-        const flow = {
-          "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": MODEL_FILES.flux.unet } },
-          "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": MODEL_FILES.flux.clip1, "clip_name2": MODEL_FILES.flux.clip2, "type": "flux" } },
-          "3": { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.flux.vae } },
-          "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["2", 0] } },
-          "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
-          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": w, "height": h, "batch_size": 1 } },
-          "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
-          "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
-          "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_gen", "images": ["7", 0] } }
-        };
+        const flow = await loadWorkflowTemplate('txt2img_flux');
+        flow["1"].inputs.unet_name = MODEL_FILES.flux.unet;
+        flow["2"].inputs.clip_name1 = MODEL_FILES.flux.clip1;
+        flow["2"].inputs.clip_name2 = MODEL_FILES.flux.clip2;
+        flow["3"].inputs.vae_name = MODEL_FILES.flux.vae;
+        flow["4"].inputs.text = positivePrompt;
+        flow["9"].inputs.text = "";
+        flow["5"].inputs.width = w;
+        flow["5"].inputs.height = h;
+        flow["6"].inputs.seed = seed;
+        flow["6"].inputs.steps = steps;
+        flow["6"].inputs.cfg = cfg;
 
         // fix #23: inject LoRA loader for GGUF
         if (loraName) {
@@ -2662,32 +2677,33 @@
           flow["4"].inputs.clip = ["20", 1];
           flow["9"].inputs.clip = ["20", 1];
         }
-
         return flow;
       } else {
-        // Standard checkpoint (SD 1.5 / SDXL / Lightning)
-        const isSD15 = type === 'sd15';
         const sampler = type === 'sdxl_lightning' ? 'dpm_2' : 'euler_ancestral';
         const scheduler = type === 'sdxl_lightning' ? 'sgm_uniform' : 'karras';
+        const isSD15 = type === 'sd15';
 
-        const flow = {
-          "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": model } },
-          "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["1", 1] } },
-          "9": { "class_type": "CLIPTextEncode", "inputs": { "text": negativePrompt, "clip": ["1", 1] } },
-          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": w, "height": h, "batch_size": 1 } },
-          "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler, "scheduler": scheduler, "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
-          "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": isSD15 ? ["3", 0] : ["1", 2] } },
-          "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_gen", "images": ["7", 0] } }
-        };
+        const flow = await loadWorkflowTemplate('txt2img_sd');
+        flow["1"].inputs.ckpt_name = model;
+        flow["4"].inputs.text = positivePrompt;
+        flow["9"].inputs.text = negativePrompt;
+        flow["5"].inputs.width = w;
+        flow["5"].inputs.height = h;
+        flow["6"].inputs.seed = seed;
+        flow["6"].inputs.steps = steps;
+        flow["6"].inputs.cfg = cfg;
+        flow["6"].inputs.sampler_name = sampler;
+        flow["6"].inputs.scheduler = scheduler;
 
         if (isSD15) {
           flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.sd15.vae } };
+          flow["7"].inputs.vae = ["3", 0];
         }
         return flow;
       }
     }
 
-    function buildImg2ImgWorkflow(refFilename, positivePrompt, negativePrompt, opts = {}) {
+    async function buildImg2ImgWorkflow(refFilename, positivePrompt, negativePrompt, opts = {}) {
       const type = opts.type || selectedModel.type;
       const model = opts.name || selectedModel.name;
       const seed = Math.floor(Math.random() * 9999999999);
@@ -2697,48 +2713,47 @@
       const loraName = document.getElementById('loraInput')?.value.trim();
 
       if (type === 'gguf') {
-        // FLUX img2img — filenames from MODEL_FILES constants
-        const flow = {
-          "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": MODEL_FILES.flux.unet } },
-          "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": MODEL_FILES.flux.clip1, "clip_name2": MODEL_FILES.flux.clip2, "type": "flux" } },
-          "3": { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.flux.vae } },
-          "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["2", 0] } },
-          "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
-          "10": { "class_type": "LoadImage", "inputs": { "image": refFilename } },
-          "11": { "class_type": "VAEEncode", "inputs": { "pixels": ["10", 0], "vae": ["3", 0] } },
-          "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "euler", "scheduler": "simple", "denoise": denoise, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["11", 0] } },
-          "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
-          "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_anim", "images": ["7", 0] } }
-        };
+        const flow = await loadWorkflowTemplate('img2img_flux');
+        flow["1"].inputs.unet_name = MODEL_FILES.flux.unet;
+        flow["2"].inputs.clip_name1 = MODEL_FILES.flux.clip1;
+        flow["2"].inputs.clip_name2 = MODEL_FILES.flux.clip2;
+        flow["3"].inputs.vae_name = MODEL_FILES.flux.vae;
+        flow["4"].inputs.text = positivePrompt;
+        flow["9"].inputs.text = "";
+        flow["10"].inputs.image = refFilename;
+        flow["6"].inputs.seed = seed;
+        flow["6"].inputs.steps = steps;
+        flow["6"].inputs.cfg = cfg;
+        flow["6"].inputs.denoise = denoise;
 
-        // fix #23: inject LoRA loader for GGUF
         if (loraName) {
           flow["20"] = { "class_type": "LoraLoader", "inputs": { "lora_name": loraName, "strength_model": 1.0, "strength_clip": 1.0, "model": ["1", 0], "clip": ["2", 0] } };
           flow["6"].inputs.model = ["20", 0];
           flow["4"].inputs.clip = ["20", 1];
           flow["9"].inputs.clip = ["20", 1];
         }
-
         return flow;
       } else {
-        // SD1.5 / SDXL img2img
-        const isSD15 = type === 'sd15';
         const sampler = type === 'sdxl_lightning' ? 'dpm_2' : 'euler_ancestral';
         const scheduler = type === 'sdxl_lightning' ? 'sgm_uniform' : 'karras';
+        const isSD15 = type === 'sd15';
 
-        const flow = {
-          "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": model } },
-          "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["1", 1] } },
-          "9": { "class_type": "CLIPTextEncode", "inputs": { "text": negativePrompt, "clip": ["1", 1] } },
-          "10": { "class_type": "LoadImage", "inputs": { "image": refFilename } },
-          "11": { "class_type": "VAEEncode", "inputs": { "pixels": ["10", 0], "vae": isSD15 ? ["3", 0] : ["1", 2] } },
-          "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler, "scheduler": scheduler, "denoise": denoise, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["11", 0] } },
-          "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": isSD15 ? ["3", 0] : ["1", 2] } },
-          "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_anim", "images": ["7", 0] } }
-        };
+        const flow = await loadWorkflowTemplate('img2img_sd');
+        flow["1"].inputs.ckpt_name = model;
+        flow["4"].inputs.text = positivePrompt;
+        flow["9"].inputs.text = negativePrompt;
+        flow["10"].inputs.image = refFilename;
+        flow["6"].inputs.seed = seed;
+        flow["6"].inputs.steps = steps;
+        flow["6"].inputs.cfg = cfg;
+        flow["6"].inputs.sampler_name = sampler;
+        flow["6"].inputs.scheduler = scheduler;
+        flow["6"].inputs.denoise = denoise;
 
         if (isSD15) {
           flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.sd15.vae } };
+          flow["7"].inputs.vae = ["3", 0];
+          flow["11"].inputs.vae = ["3", 0];
         }
         return flow;
       }
@@ -2852,7 +2867,7 @@
         document.getElementById('loaderLabel').textContent = 'Queueing prompt...';
 
         // 2. Build model-aware workflow
-        const workflow = buildWorkflow(positivePrompt, negativePrompt);
+        const workflow = await buildWorkflow(positivePrompt, negativePrompt);
 
         // 3. Queue the prompt
         const queueRes = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
@@ -3275,7 +3290,7 @@
           cfg = 2.0;
         }
 
-        const workflowData = buildWorkflow(
+        const workflowData = await buildWorkflow(
           positivePrompt,
           negativePrompt,
           {
@@ -3755,7 +3770,7 @@
             try {
               let steps = 15, cfg = 7.0;
               if (selectedModel.type === 'sdxl_lightning') { steps = 4; cfg = 2.0; }
-              const wd = buildImg2ImgWorkflow(
+              const wd = await buildImg2ImgWorkflow(
                 currentFrameRefImg, getFramePrompt(c), s.baseNegativePrompt || '',
                 { name: selectedModel.name, type: selectedModel.type, steps, cfg, denoise: s.denoise || 0.55 }
               );
@@ -4105,7 +4120,7 @@
             let cfg = 7.0;
             if (selectedModel.type === 'sdxl_lightning') { steps = 4; cfg = 2.0; }
 
-            const workflowData = buildImg2ImgWorkflow(
+            const workflowData = await buildImg2ImgWorkflow(
               currentFrameRefImg, // Recursively feed the PREVIOUS frame as the reference!
               animPrompt,
               baseNegativePrompt,
@@ -4576,7 +4591,7 @@
           if (retryModel.type === 'sdxl_lightning') { steps = 6; cfg = 2.0; }
           else if (retryModel.type === 'gguf') { steps = 4; cfg = 1.0; }
           const denoise = parseFloat(document.getElementById('denoiseSlider')?.value || 0.55);
-          const workflowData = buildImg2ImgWorkflow(
+          const workflowData = await buildImg2ImgWorkflow(
             currentFrameRefImg,
             getFramePrompt(c),
             baseNegativePrompt,
@@ -4697,7 +4712,7 @@
         else if (spriteModel.type === 'gguf') { steps = 4; cfg = 1.0; }
         const denoise = parseFloat(document.getElementById('denoiseSlider')?.value || 0.55);
 
-        const workflowData = buildImg2ImgWorkflow(
+        const workflowData = await buildImg2ImgWorkflow(
           uploadName,
           positivePrompt,
           negativePrompt,

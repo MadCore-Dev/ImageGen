@@ -184,9 +184,8 @@
 ## Current State
 **6 chunks committed across 7 git commits** (includes SwiftBar fix commit).
 
-**35 of 34 audit items shipped** (#24 FastAPI and #25 Send-to-Unity removed — moot; #26 ControlNet removed — Unity-specific input source).
+**36 of 34 audit items shipped** (#24 FastAPI and #25 Send-to-Unity removed — moot; #26 ControlNet removed — Unity-specific input source).
 
 | Remaining | Notes |
 |-----------|-------|
 | `#10` Modularization | Full file split — large session |
-| `#11` Workflow JSON | Fetch-based workflow loading |

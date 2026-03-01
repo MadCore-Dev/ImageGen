@@ -298,7 +298,7 @@ The `buildWorkflow()` function produces 8-node inline JS objects manually. This 
 | 8 | Use `selectedAnims` (local) consistently in `startAnimationQueue` | 🟠 P1 | 20min | ✅ Done |
 | 9 | Extract timeline row DOM generation to a reusable function (kill inline styles) | 🟠 P1 | 1hr | ✅ Done |
 | 10 | Split into multi-file project structure (`js/`, `css/`) | 🟠 P1 | 4hr | ⏳ Future |
-| 11 | Load ComfyUI workflows from static JSON files | 🟠 P1 | 3hr | ⏳ Future |
+| 11 | Load ComfyUI workflows from static JSON files | 🟠 P1 | 3hr | ✅ Done |
 | 12 | Fix GIF `transparent` property format issue | 🟡 P2 | 10min | ✅ Done |
 | 13 | GIF export: read delay from FPS slider instead of hardcoded 150ms | 🟡 P2 | 10min | ✅ Done |
 | 14 | `start_gen.sh`: dynamic Python path + auto `open` URL | 🟡 P2 | 15min | ✅ Done |
