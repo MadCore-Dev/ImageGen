@@ -1648,6 +1648,21 @@
     const TRAFFIC_COP = "http://127.0.0.1:5050";
     const COMFY_API = "127.0.0.1:8188";
 
+    // ============================================================
+    //  MODEL FILE NAMES — edit here once, reflects everywhere
+    // ============================================================
+    const MODEL_FILES = {
+      flux: {
+        unet: 'flux1-schnell-Q4_K_S.gguf',
+        clip1: 't5xxl_fp8_e4m3fn.safetensors',
+        clip2: 'clip_l.safetensors',
+        vae: 'flux_vae.safetensors'
+      },
+      sd15: {
+        vae: 'vae-ft-mse-840000-ema-pruned.safetensors'
+      }
+    };
+
     // Tab state (#17: use data-tab attribute for cleaner, more robust lookups)
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -1985,11 +2000,11 @@
       lastSeed = seed;
 
       if (type === 'gguf') {
-        // FLUX GGUF workflow
+        // FLUX GGUF workflow — filenames from MODEL_FILES constants
         return {
-          "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": "flux1-schnell-Q4_K_S.gguf" } },
-          "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": "t5xxl_fp8_e4m3fn.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux" } },
-          "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_vae.safetensors" } },
+          "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": MODEL_FILES.flux.unet } },
+          "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": MODEL_FILES.flux.clip1, "clip_name2": MODEL_FILES.flux.clip2, "type": "flux" } },
+          "3": { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.flux.vae } },
           "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["2", 0] } },
           "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
           "5": { "class_type": "EmptyLatentImage", "inputs": { "width": w, "height": h, "batch_size": 1 } },
@@ -2014,7 +2029,7 @@
         };
 
         if (isSD15) {
-          flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": "vae-ft-mse-840000-ema-pruned.safetensors" } };
+          flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.sd15.vae } };
         }
         return flow;
       }
@@ -2029,11 +2044,11 @@
       const denoise = opts.denoise !== undefined ? opts.denoise : parseFloat(document.getElementById('denoiseSlider')?.value || 0.55);
 
       if (type === 'gguf') {
-        // FLUX img2img
+        // FLUX img2img — filenames from MODEL_FILES constants
         return {
-          "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": "flux1-schnell-Q4_K_S.gguf" } },
-          "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": "t5xxl_fp8_e4m3fn.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux" } },
-          "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_vae.safetensors" } },
+          "1": { "class_type": "UnetLoaderGGUF", "inputs": { "unet_name": MODEL_FILES.flux.unet } },
+          "2": { "class_type": "DualCLIPLoader", "inputs": { "clip_name1": MODEL_FILES.flux.clip1, "clip_name2": MODEL_FILES.flux.clip2, "type": "flux" } },
+          "3": { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.flux.vae } },
           "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["2", 0] } },
           "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
           "10": { "class_type": "LoadImage", "inputs": { "image": refFilename } },
@@ -2060,7 +2075,7 @@
         };
 
         if (isSD15) {
-          flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": "vae-ft-mse-840000-ema-pruned.safetensors" } };
+          flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.sd15.vae } };
         }
         return flow;
       }
@@ -2100,7 +2115,17 @@
         const res = await fetch(`http://${COMFY_API}/history/${prompt_id}`);
         const history = await res.json();
         if (history[prompt_id]) {
-          const outputs = history[prompt_id].outputs;
+          const entry = history[prompt_id];
+
+          // fix #33: detect ComfyUI node errors immediately instead of spinning for 30 min
+          if (entry?.error) {
+            throw new Error(`ComfyUI job failed: ${JSON.stringify(entry.error)}`);
+          }
+          if (entry?.status?.completed === true && !entry.outputs) {
+            throw new Error('ComfyUI job completed with no output — likely a node error or missing model file.');
+          }
+
+          const outputs = entry.outputs;
           if (outputs) {
             const nodeKey = Object.keys(outputs).find(k => outputs[k].images);
             if (nodeKey) return outputs[nodeKey].images[0].filename;
@@ -2500,12 +2525,6 @@
     //  SPRITE SHEET STAGE 2: CONFIGURATION
     // ============================================================
 
-    function approveReference() {
-      // Logic unchanged, just enables Stage 2
-      document.getElementById('stage2Config').style.display = 'block';
-      document.getElementById('stage2Config').scrollIntoView({ behavior: 'smooth' });
-    }
-
     async function handleCustomUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -2736,6 +2755,7 @@
       canvas.style.display = 'block';
       document.getElementById('canvasEmptyMsg').style.display = 'none';
       canvasCtx = canvas.getContext('2d');
+      canvasCtx.imageSmoothingEnabled = false; // fix #36: crisp pixel-art scaling in restored session
 
       if (s.canvasData) {
         await new Promise(resolve => {
@@ -3080,6 +3100,7 @@
       canvas.style.display = 'block';
       document.getElementById('canvasEmptyMsg').style.display = 'none';
       canvasCtx = canvas.getContext('2d');
+      canvasCtx.imageSmoothingEnabled = false; // fix #36: crisp pixel-art scaling, no bilinear blur
       // Clear canvas with transparent bg
       canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -3322,8 +3343,13 @@
       const dataUrl = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = `spritesheet_${Date.now()}.png`;
+      // fix #22: descriptive filename from prompt + selected animations
+      const promptSlug = (document.getElementById('spritePrompt')?.value || 'sprite')
+        .trim().slice(0, 24).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+      const animSlug = (currentAnimationGrid || []).join('-').slice(0, 30) || 'sheet';
+      a.download = `epoch_${promptSlug}_${animSlug}_${Date.now()}.png`;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000); // fix #32: release blob memory
     }
 
     async function downloadFramesZip() {
@@ -3353,8 +3379,13 @@
       const content = await zip.generateAsync({ type: "blob" });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(content);
-      a.download = `sprites_${Date.now()}.zip`;
+      // fix #22: descriptive filename
+      const promptSlug = (document.getElementById('spritePrompt')?.value || 'sprite')
+        .trim().slice(0, 24).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+      const animSlug = (currentAnimationGrid || []).join('-').slice(0, 30) || 'frames';
+      a.download = `epoch_${promptSlug}_${animSlug}_${Date.now()}.zip`;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000); // fix #32: release blob memory
     }
 
     // Canvas click detection
@@ -3372,7 +3403,7 @@
 
       if (row >= currentAnimationGrid.length) return;
 
-      const framesCount = parseInt(document.getElementById('animFrames').value, 10) || 8;
+      const framesCount = parseInt(document.getElementById('frameCountSlider').value, 10) || 8; // fix: correct slider ID
       if (col >= framesCount) return;
 
       const animId = currentAnimationGrid[row];
@@ -3382,6 +3413,7 @@
       previewCanvas.width = activeSpriteSize;
       previewCanvas.height = activeSpriteSize;
       const ctx = previewCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false; // fix #36: crisp pixel preview
       ctx.clearRect(0, 0, activeSpriteSize, activeSpriteSize);
       ctx.drawImage(document.getElementById('spriteCanvas'),
         col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize,
@@ -3415,6 +3447,7 @@
       previewCanvas.width = activeSpriteSize;
       previewCanvas.height = activeSpriteSize;
       const ctx = previewCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false; // fix #36: crisp pixel-art frame loop
       const sourceCanvas = document.getElementById('spriteCanvas');
 
       let currentFrame = 0;
@@ -3548,13 +3581,15 @@
         const { animId, row, framesCount } = activeAnimationData;
         const sourceCanvas = document.getElementById('spriteCanvas');
 
+        const fpsSliderVal = parseInt(document.getElementById('fpsSlider').value) || 7;
+        const gifFrameDelay = Math.round(1000 / fpsSliderVal); // fix #13: use actual FPS slider
         const gif = new GIF({
           workers: 2,
           quality: 10,
           workerScript: 'gif.worker.js',
           width: activeSpriteSize,
           height: activeSpriteSize,
-          transparent: 'rgba(0,0,0,0)'
+          transparent: null // fix #12: 'rgba(0,0,0,0)' is invalid for gif.js
         });
 
         for (let c = 0; c < framesCount; c++) {
@@ -3564,7 +3599,7 @@
           const tCtx = tempCanvas.getContext('2d');
           tCtx.drawImage(sourceCanvas, c * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize, 0, 0, activeSpriteSize, activeSpriteSize);
 
-          gif.addFrame(tempCanvas, { delay: 150 });
+          gif.addFrame(tempCanvas, { delay: gifFrameDelay }); // fix #13: dynamic delay from FPS slider
         }
 
         gif.on('finished', function (blob) {
@@ -3572,6 +3607,7 @@
           a.href = URL.createObjectURL(blob);
           a.download = `${animId}_animation_${Date.now()}.gif`;
           a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 10000); // fix #32: release GIF blob memory
 
           btn.innerText = '✅ Exported!';
           setTimeout(() => { btn.innerText = ogText; btn.disabled = false; }, 2000);
@@ -3596,14 +3632,31 @@
 
       try {
         if (!baseRefBlob) throw new Error("Reference image lost. Generate a new reference first.");
-        const baseRefUploadName = await uploadImageToComfy(baseRefBlob, `sprite_ref_${Date.now()}.png`);
+        const uploadName = await uploadImageToComfy(baseRefBlob, `sprite_ref_${Date.now()}.png`);
 
-        const animPrompt = animDefinitions[animId] ? animDefinitions[animId].prompt : '';
+        // fix #1: use ANIMATION_PRESETS, not the undefined animDefinitions
+        const preset = ANIMATION_PRESETS.find(p => p.id === animId);
+        const userPrompt = document.getElementById('spritePrompt').value.trim();
+        let posKw = activeStyleKw.positive || 'pixel art, 16-bit, retro game sprite, isolated on solid white background, full body';
+        let negKw = activeStyleKw.negative || 'photorealistic, blurry, noise, 3d, realistic, background details';
+        const frameKw = preset?.keyframes?.length > 0
+          ? preset.keyframes[frameIndex % preset.keyframes.length]
+          : (preset?.pose || '');
+        // fix #2: correct positive/negative prompt construction
+        const positivePrompt = `${userPrompt}, ${posKw}, ${frameKw}`;
+        const negativePrompt = negKw;
+
+        const spriteModel = getSpriteModel();
+        let steps = 15, cfg = 7.0;
+        if (spriteModel.type === 'sdxl_lightning') { steps = 6; cfg = 2.0; }
+        else if (spriteModel.type === 'gguf') { steps = 4; cfg = 1.0; }
+        const denoise = parseFloat(document.getElementById('denoiseSlider')?.value || 0.55);
+
         const workflowData = buildImg2ImgWorkflow(
-          baseRefUploadName,
-          animPrompt,
-          document.getElementById('promptInput').value.trim(),
-          document.getElementById('negativeInput').value.trim()
+          uploadName,
+          positivePrompt,
+          negativePrompt,
+          { name: spriteModel.name, type: spriteModel.type, steps, cfg, denoise }
         );
 
         const qRes = await fetch(`http://${COMFY_API}/prompt`, {
@@ -3618,11 +3671,12 @@
 
         await new Promise((resolve, reject) => {
           const img = new Image();
+          img.crossOrigin = 'Anonymous';
           img.onload = () => {
             const canvas = document.getElementById('spriteCanvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
-            ctx.drawImage(img, 0, 0, genSize, genSize, col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+            ctx.drawImage(img, 0, 0, activeSpriteSize, activeSpriteSize, col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
             resolve();
           };
           img.onerror = reject;
