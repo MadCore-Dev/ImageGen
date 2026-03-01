@@ -730,6 +730,39 @@
     .loader-label {
       font-size: 12px;
       color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    /* ── SKELETON SHIMMER — fix #30 ── */
+    @keyframes shimmer {
+      0% {
+        background-position: -600px 0;
+      }
+
+      100% {
+        background-position: 600px 0;
+      }
+    }
+
+    .skeleton-shimmer {
+      background: linear-gradient(90deg,
+          rgba(255, 255, 255, 0.03) 25%,
+          rgba(255, 255, 255, 0.07) 50%,
+          rgba(255, 255, 255, 0.03) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+
+    .tip-text {
+      font-size: 11px;
+      color: var(--text-dim);
+      max-width: 260px;
+      text-align: center;
+      line-height: 1.5;
+      margin-top: 4px;
+      min-height: 34px;
+      transition: opacity 0.4s;
+      opacity: 0.8;
     }
 
     #resultImage {
@@ -1812,6 +1845,7 @@
         <div class="loader-wrap" id="loaderWrap">
           <div class="loader"></div>
           <div class="loader-label" id="loaderLabel">Warming up ComfyUI...</div>
+          <div class="tip-text" id="tipText"></div>
         </div>
 
         <img id="resultImage" alt="Generated image">
@@ -1896,6 +1930,7 @@
         </div>
         <div class="loader-wrap" id="spriteLoaderWrap">
           <div class="loader"></div>
+          <div class="tip-text" id="spriteTipText"></div>
         </div>
         <img id="spriteRefImg" style="display:none; max-width:200px; object-fit:contain; image-rendering:pixelated;" />
       </div>
@@ -2387,9 +2422,54 @@
       });
     }
 
+    // ============================================================
+    //  SKELETON LOADERS + CYCLING TIPS — fix #30
+    // ============================================================
+    const TIPS = [
+      '💡 Lower CFG (1.0 for FLUX) keeps images more creative',
+      '💡 FLUX Schnell generates in ~4 steps — fast & sharp',
+      '💡 Add "isolated on white background" for cleaner sprites',
+      '💡 Increase Denoise for more variation, decrease for consistency',
+      '💡 Style chips inject hidden keywords — mix-and-match them',
+      '💡 Export your session JSON to back up your sprite config',
+      '💡 Frame 1 sets the character identity — nail the reference first',
+      '💡 Try "full body, front-facing" for walking animations',
+      '💡 The FPS slider controls GIF playback speed after export',
+      '💡 Batch mode (1–4) lets you compare prompt variations',
+      '💡 Lower denoising = smoother frame transitions',
+      '💡 Traffic Cop manages VRAM — it will auto-restart ComfyUI if needed',
+      '💡 You can resume any interrupted session from the recovery banner',
+    ];
+    let _tipInterval = null;
+    let _tipIndex = 0;
+
+    function startTipCycle(elId) {
+      stopTipCycle();
+      const el = document.getElementById(elId);
+      if (!el) return;
+      _tipIndex = Math.floor(Math.random() * TIPS.length);
+      el.textContent = TIPS[_tipIndex];
+      _tipInterval = setInterval(() => {
+        _tipIndex = (_tipIndex + 1) % TIPS.length;
+        if (el) el.textContent = TIPS[_tipIndex];
+      }, 4000);
+    }
+
+    function stopTipCycle() {
+      clearInterval(_tipInterval);
+      _tipInterval = null;
+      const t1 = document.getElementById('tipText');
+      const t2 = document.getElementById('spriteTipText');
+      if (t1) t1.textContent = '';
+      if (t2) t2.textContent = '';
+    }
+
     function showProgress(visible) {
       document.getElementById('progressContainer').classList.toggle('visible', visible);
-      if (!visible) setProgress(0);
+      // fix #30: shimmer + tips
+      document.getElementById('result-container')?.classList.toggle('skeleton-shimmer', visible);
+      if (visible) startTipCycle('tipText');
+      else { stopTipCycle(); setProgress(0); }
     }
 
     function setSpriteStatus(msg, state = 'idle') {
@@ -2404,7 +2484,10 @@
     function showSpriteProgress(visible) {
       const c = document.getElementById('spriteProgressContainer');
       if (c) c.classList.toggle('visible', visible);
-      if (!visible) setProgress(0);
+      // fix #30: shimmer + tips for sprite tab
+      document.getElementById('spriteLoaderWrap')?.classList.toggle('skeleton-shimmer', visible);
+      if (visible) startTipCycle('spriteTipText');
+      else { stopTipCycle(); setProgress(0); }
     }
 
     // ============================================================
