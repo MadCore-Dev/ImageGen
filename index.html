@@ -1761,9 +1761,12 @@
 
       <div class="card">
         <div class="card-label">Sprite Sheet Assembly</div>
+        <!-- fix #16: horizontal scroll wrapper prevents wide sprite sheets from breaking layout -->
         <div
-          style="text-align:center; padding:20px; border:1px dashed var(--border); border-radius:8px; background:rgba(255,255,255,0.02); overflow-x:auto;">
-          <canvas id="spriteCanvas" style="max-width:100%; image-rendering:pixelated; display:none;"></canvas>
+          style="text-align:center; padding:20px; border:1px dashed var(--border); border-radius:8px; background:rgba(255,255,255,0.02); overflow-x:auto; -webkit-overflow-scrolling:touch;">
+          <div style="display:inline-block; min-width:100%;">
+            <canvas id="spriteCanvas" style="image-rendering:pixelated; display:none;"></canvas>
+          </div>
           <p id="canvasEmptyMsg" style="font-size:13px; color:var(--text-dim);">Frames will appear here as they
             complete</p>
         </div>
@@ -2209,9 +2212,20 @@
         } catch (_) { }
       };
 
+      // fix #15: detect WS drop during active generation — likely OOM
       socket.onclose = () => {
+        const wasMidGeneration = document.getElementById('btnStartAnim')?.disabled ||
+          document.getElementById('btnGenerate')?.disabled;
         socket = null;
         wsRetries++;
+        if (wasMidGeneration) {
+          // Notify user of likely OOM crash rather than silently retrying
+          setSpriteStatus(
+            '⚠️ ComfyUI disconnected during generation — possible OOM crash. Check Traffic Cop, then retry.',
+            'error'
+          );
+          setStatus('⚠️ ComfyUI disconnected mid-generation. Possible out-of-memory crash.', 'error');
+        }
         if (wsRetries < WS_MAX_RETRIES) {
           const delay = Math.min(2000 * wsRetries, 10000);
           setTimeout(initWebSocket, delay);
@@ -3423,6 +3437,10 @@
           btn.textContent = '✦ Start Sequential Generation';
           return;
         }
+
+        // fix #17: show which style is active so user knows what keywords will be injected
+        const activeStyleName = document.querySelector('.style-chip.active')?.dataset?.style || 'none';
+        setSpriteStatus(`✅ Reference ready. Style: [${activeStyleName}] — Starting frame generation…`, 'active');
       }
 
       // 💾 Save initial session config so recovery is possible from the first frame
