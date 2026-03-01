@@ -5,7 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Epoch: Offline Image Gen</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="jszip.min.js"></script>
+  <script src="gif.js"></script>
   <style>
     /* ============================================================
        DESIGN TOKENS
@@ -1076,8 +1077,16 @@
           </div>
         </div>
 
-        <button class="btn-generate" id="btnGenRef" onclick="generateSpriteRef()"
-          style="margin-top:16px; padding:10px 16px; font-size:13px;">✦ Generate Reference Frame</button>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button class="btn-generate" id="btnGenRef" onclick="generateSpriteRef()"
+            style="flex:2; padding:10px 16px; font-size:13px;">✦ Generate Reference Frame</button>
+
+          <button class="btn-generate" id="btnUploadRef" onclick="document.getElementById('fileUploadRef').click()"
+            style="flex:1; padding:10px 16px; font-size:13px; background:var(--bg-card-hover); color:var(--text-primary); border:1px solid var(--border);">⬆️
+            Upload Custom</button>
+          <input type="file" id="fileUploadRef" accept="image/png, image/jpeg" style="display:none;"
+            onchange="handleCustomUpload(event)" />
+        </div>
 
         <!-- ── SPRITE STATUS BAR ── -->
         <div class="status-bar" id="spriteStatusBar" style="margin-top:16px; display:none;">
@@ -1117,6 +1126,10 @@
         <!-- Animation Picker -->
         <div class="preset-btns" style="margin-bottom:16px;" id="animationPicker">
           <!-- Populated by JS -->
+        </div>
+
+        <div id="poseOverrideContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+          <!-- Dynamically populated pose overrides -->
         </div>
 
         <div class="controls-grid" style="grid-template-columns: 1fr;">
@@ -1192,6 +1205,9 @@
         </div>
         <button class="btn-generate" id="btnRetryCell" onclick="retryActiveCell()"
           style="width:100%; background:var(--warning); color:#000;">⚠️ Retry This Frame</button>
+        <button class="btn-download" id="btnDownloadGif" onclick="exportActiveAnimationGif()"
+          style="display:none; width:100%; margin-top:8px; background:var(--success); color:#000; font-weight:bold;">⬇
+          Export as Animated GIF</button>
       </div>
     </div>
 
@@ -1960,6 +1976,42 @@
     // ============================================================
     //  SPRITE SHEET STAGE 2: CONFIGURATION
     // ============================================================
+
+    function approveReference() {
+      // Logic unchanged, just enables Stage 2
+      document.getElementById('stage2Config').style.display = 'block';
+      document.getElementById('stage2Config').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function handleCustomUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setSpriteStatus('Loading custom reference...', 'active');
+      showSpriteProgress(true);
+      setProgress(50);
+
+      try {
+        baseRefBlob = file;
+        const imgUrl = URL.createObjectURL(file);
+
+        document.getElementById('spriteEmpty').style.display = 'none';
+        document.getElementById('spriteLoaderWrap').classList.remove('active');
+        document.getElementById('spriteRefImg').src = imgUrl;
+        document.getElementById('spriteRefImg').style.display = 'block';
+
+        document.getElementById('btnApproveRef').disabled = false;
+        document.getElementById('btnApproveRef').style.opacity = '1';
+
+        setSpriteStatus('Custom reference loaded!', 'success');
+        showSpriteProgress(false);
+
+      } catch (err) {
+        console.error(err);
+        setSpriteStatus('Failed to load custom image', 'error');
+        showSpriteProgress(false);
+      }
+    }
     const ANIMATION_PRESETS = [
       { id: 'idle', name: 'Idle', defaultFrames: 4, pose: 'standing still, subtle breathing' },
       { id: 'walk', name: 'Walk', defaultFrames: 8, pose: 'walking side view, dynamic stride' },
@@ -1996,13 +2048,48 @@
       selectedAnimations = getCheckedAnimIds(); // Update based on active buttons
 
       if (selectedAnimations.includes(animId)) {
-        // Auto-update slider to match the chosen preset's default (if only one selected or last selected)
-        const preset = ANIMATION_PRESETS.find(a => a.id === animId);
-        document.getElementById('frameCountSlider').value = preset.defaultFrames;
-        document.getElementById('frameCountVal').innerText = preset.defaultFrames;
+        // Nothing here for now, defaults handle themselves
       }
 
+      renderPoseOverrides();
       document.getElementById('btnStartAnim').disabled = selectedAnimations.length === 0;
+    }
+
+    function renderPoseOverrides() {
+      const container = document.getElementById('poseOverrideContainer');
+      container.innerHTML = '';
+      if (selectedAnimations.length === 0) return;
+
+      const helpText = document.createElement('div');
+      helpText.style.fontSize = '12px';
+      helpText.style.color = 'var(--text-dim)';
+      helpText.innerText = 'Advanced: Override the default pose prompt for each sequence.';
+      container.appendChild(helpText);
+
+      selectedAnimations.forEach(animId => {
+        const preset = ANIMATION_PRESETS.find(p => p.id === animId);
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '8px';
+        row.style.alignItems = 'center';
+
+        const lbl = document.createElement('div');
+        lbl.innerText = preset.name;
+        lbl.style.width = '80px';
+        lbl.style.fontSize = '12px';
+        lbl.style.fontWeight = 'bold';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.id = `poseOverride_${animId}`;
+        inp.className = 'pixel-input';
+        inp.value = preset.pose;
+        inp.style.flex = '1';
+
+        row.appendChild(lbl);
+        row.appendChild(inp);
+        container.appendChild(row);
+      });
     }
 
     function approveReference() {
@@ -2107,19 +2194,42 @@
         const framesDiv = document.createElement('div');
         framesDiv.id = `timeline_${animId}`;
         framesDiv.style.letterSpacing = '2px';
+        framesDiv.style.flex = '1';
         framesDiv.innerText = '⬜'.repeat(framesCount);
         rowDiv.appendChild(framesDiv);
 
+        const playBtn = document.createElement('button');
+        playBtn.innerText = '▶️ Play';
+        playBtn.style.padding = '2px 8px';
+        playBtn.style.fontSize = '10px';
+        playBtn.style.cursor = 'pointer';
+        playBtn.style.background = 'var(--accent-glow)';
+        playBtn.style.border = '1px solid var(--accent)';
+        playBtn.style.color = 'var(--accent)';
+        playBtn.style.borderRadius = '4px';
+        playBtn.style.display = 'none'; // hidden until finished
+        playBtn.onclick = () => playAnimationLoop(animId, rowIndex, framesCount);
+        rowDiv.appendChild(playBtn);
+
         timelineContainer.appendChild(rowDiv);
 
-        rowStatuses[animId] = { div: framesDiv, currentFrame: 0, pose: preset.pose };
+        // Read the custom override from the input field if it exists
+        const overrideInput = document.getElementById(`poseOverride_${animId}`);
+        const activePose = overrideInput ? overrideInput.value.trim() : preset.pose;
+
+        rowStatuses[animId] = { div: framesDiv, playBtn: playBtn, currentFrame: 0, pose: activePose };
       });
 
       // 3. Execute Queue (Sequential Loop)
       for (let r = 0; r < selectedAnimations.length; r++) {
         const animId = selectedAnimations[r];
         const status = rowStatuses[animId];
+
+        // Dynamic prompt to enforce sequence awareness + user's base style
         const animPrompt = `${basePositivePrompt}, ${status.pose}`;
+
+        // Temporal Consistency: We start with the base reference, but update it after every frame!
+        let currentFrameRefImg = baseRefUploadName;
 
         for (let c = 0; c < framesCount; c++) {
           // Update timeline: ⏳ for current
@@ -2137,7 +2247,7 @@
             if (selectedModel.type === 'sdxl_lightning') { steps = 4; cfg = 2.0; }
 
             const workflowData = buildImg2ImgWorkflow(
-              baseRefUploadName,
+              currentFrameRefImg, // Recursively feed the PREVIOUS frame as the reference!
               animPrompt,
               baseNegativePrompt,
               {
@@ -2174,6 +2284,10 @@
               img.src = imgUrl;
             });
 
+            // CRITICAL: Set the newly generated frame as the reference for the NEXT frame in the loop!
+            // This forces temporal consistency and creates actual animation instead of static identical poses!
+            currentFrameRefImg = filename;
+
             // Update timeline: ✅ for completed
             timelineStr = '✅'.repeat(c + 1) + '⬜'.repeat(framesCount - c - 1);
             status.div.innerText = timelineStr;
@@ -2192,6 +2306,9 @@
             return;
           }
         }
+
+        // Expose the Play button for this row once it fully completes
+        status.playBtn.style.display = 'block';
       }
 
       // 4. Completed
@@ -2275,11 +2392,99 @@
         col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize,
         0, 0, activeSpriteSize, activeSpriteSize);
 
+      // Convert modal to Single Frame mode
       document.getElementById('previewModalLabel').innerText = `Preview: ${animId} - Frame ${col + 1}`;
+      document.getElementById('modalRetryText').style.display = 'block';
+      document.getElementById('btnRetryCell').style.display = 'block';
+      document.getElementById('btnDownloadGif').style.display = 'none';
       document.getElementById('cellPreviewModal').style.display = 'flex';
     });
 
-    function closeCellPreview() { document.getElementById('cellPreviewModal').style.display = 'none'; }
+    let animationPreviewInterval = null;
+    let activeAnimationData = null; // store current playback config
+
+    function playAnimationLoop(animId, row, framesCount) {
+      activeAnimationData = { animId, row, framesCount };
+      // Convert modal to Animation Loop mode
+      document.getElementById('previewModalLabel').innerText = `Preview: ${animId} (Animation Loop)`;
+      document.getElementById('modalRetryText').style.display = 'none';
+      document.getElementById('btnRetryCell').style.display = 'none';
+      document.getElementById('btnDownloadGif').style.display = 'block';
+      document.getElementById('cellPreviewModal').style.display = 'flex';
+
+      const previewCanvas = document.getElementById('cellPreviewCanvas');
+      previewCanvas.width = activeSpriteSize;
+      previewCanvas.height = activeSpriteSize;
+      const ctx = previewCanvas.getContext('2d');
+      const sourceCanvas = document.getElementById('spriteCanvas');
+
+      let currentFrame = 0;
+      if (animationPreviewInterval) clearInterval(animationPreviewInterval);
+
+      animationPreviewInterval = setInterval(() => {
+        ctx.clearRect(0, 0, activeSpriteSize, activeSpriteSize);
+        ctx.drawImage(sourceCanvas,
+          currentFrame * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize,
+          0, 0, activeSpriteSize, activeSpriteSize);
+        currentFrame = (currentFrame + 1) % framesCount;
+      }, 150); // ~6.6 fps
+    }
+
+    function closeCellPreview() {
+      document.getElementById('cellPreviewModal').style.display = 'none';
+      if (animationPreviewInterval) {
+        clearInterval(animationPreviewInterval);
+        animationPreviewInterval = null;
+      }
+    }
+
+    async function exportActiveAnimationGif() {
+      if (!activeAnimationData) return;
+      const btn = document.getElementById('btnDownloadGif');
+      const ogText = btn.innerText;
+      btn.innerText = '⏳ Encoding GIF...';
+      btn.disabled = true;
+
+      try {
+        const { animId, row, framesCount } = activeAnimationData;
+        const sourceCanvas = document.getElementById('spriteCanvas');
+
+        const gif = new GIF({
+          workers: 2,
+          quality: 10,
+          workerScript: 'gif.worker.js',
+          width: activeSpriteSize,
+          height: activeSpriteSize,
+          transparent: 'rgba(0,0,0,0)'
+        });
+
+        for (let c = 0; c < framesCount; c++) {
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = activeSpriteSize;
+          tempCanvas.height = activeSpriteSize;
+          const tCtx = tempCanvas.getContext('2d');
+          tCtx.drawImage(sourceCanvas, c * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize, 0, 0, activeSpriteSize, activeSpriteSize);
+
+          gif.addFrame(tempCanvas, { delay: 150 });
+        }
+
+        gif.on('finished', function (blob) {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `${animId}_animation_${Date.now()}.gif`;
+          a.click();
+
+          btn.innerText = '✅ Exported!';
+          setTimeout(() => { btn.innerText = ogText; btn.disabled = false; }, 2000);
+        });
+
+        gif.render();
+      } catch (err) {
+        console.error(err);
+        btn.innerText = '❌ Encode Failed';
+        setTimeout(() => { btn.innerText = ogText; btn.disabled = false; }, 2000);
+      }
+    }
 
     async function retryActiveCell() {
       closeCellPreview();
