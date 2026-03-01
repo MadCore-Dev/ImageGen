@@ -1077,6 +1077,18 @@
 
         <button class="btn-generate" id="btnGenRef" onclick="generateSpriteRef()"
           style="margin-top:16px; padding:10px 16px; font-size:13px;">✦ Generate Reference Frame</button>
+
+        <!-- ── SPRITE STATUS BAR ── -->
+        <div class="status-bar" id="spriteStatusBar" style="margin-top:16px; display:none;">
+          <div class="status-dot"></div>
+          <span id="spriteStatusText">Ready to generate</span>
+        </div>
+
+        <!-- ── SPRITE PROGRESS BAR ── -->
+        <div class="progress-container" id="spriteProgressContainer" style="margin-top:10px;">
+          <div class="progress-bar" id="spriteProgressBar"></div>
+        </div>
+
       </div>
 
       <div id="sprite-ref-container"
@@ -1343,11 +1355,28 @@
 
     function setProgress(pc) {
       const bar = document.getElementById('progressBar');
-      bar.style.width = `${pc}%`;
+      if (bar) bar.style.width = `${pc}%`;
+      const sBar = document.getElementById('spriteProgressBar');
+      if (sBar) sBar.style.width = `${pc}%`;
     }
 
     function showProgress(visible) {
       document.getElementById('progressContainer').classList.toggle('visible', visible);
+      if (!visible) setProgress(0);
+    }
+
+    function setSpriteStatus(msg, state = 'idle') {
+      const bar = document.getElementById('spriteStatusBar');
+      const text = document.getElementById('spriteStatusText');
+      if (!bar || !text) return;
+      bar.style.display = 'flex';
+      bar.className = 'status-bar ' + state;
+      text.textContent = msg;
+    }
+
+    function showSpriteProgress(visible) {
+      const c = document.getElementById('spriteProgressContainer');
+      if (c) c.classList.toggle('visible', visible);
       if (!visible) setProgress(0);
     }
 
@@ -1391,13 +1420,15 @@
     // ============================================================
     //  WORKFLOW BUILDERS (model-aware routing)
     // ============================================================
-    function buildWorkflow(positivePrompt, negativePrompt) {
-      const type = selectedModel.type;
-      const model = selectedModel.name;
-      const seed = parseInt(document.getElementById('seedInput').value) ||
-        Math.floor(Math.random() * 1000000000);
-      const steps = parseInt(document.getElementById('stepsSlider').value);
-      const cfg = parseFloat(document.getElementById('cfgSlider').value);
+    function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
+      const type = opts.type || selectedModel.type;
+      const model = opts.name || selectedModel.name;
+      const seed = opts.seed !== undefined ? opts.seed : (parseInt(document.getElementById('seedInput').value) ||
+        Math.floor(Math.random() * 1000000000));
+      const steps = opts.steps !== undefined ? opts.steps : parseInt(document.getElementById('stepsSlider').value);
+      const cfg = opts.cfg !== undefined ? opts.cfg : parseFloat(document.getElementById('cfgSlider').value);
+      const w = opts.width || imgWidth;
+      const h = opts.height || imgHeight;
 
       lastSeed = seed;
 
@@ -1409,7 +1440,7 @@
           "3": { "class_type": "VAELoader", "inputs": { "vae_name": "flux_vae.safetensors" } },
           "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["2", 0] } },
           "9": { "class_type": "CLIPTextEncode", "inputs": { "text": "", "clip": ["2", 0] } },
-          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": imgWidth, "height": imgHeight, "batch_size": 1 } },
+          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": w, "height": h, "batch_size": 1 } },
           "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
           "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
           "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_gen", "images": ["7", 0] } }
@@ -1425,7 +1456,7 @@
           "4": { "class_type": "CLIPTextEncode", "inputs": { "text": positivePrompt, "clip": ["1", 1] } },
           "9": { "class_type": "CLIPTextEncode", "inputs": { "text": negativePrompt, "clip": ["1", 1] } },
           "3": { "class_type": "VAELoader", "inputs": { "vae_name": vae } },
-          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": imgWidth, "height": imgHeight, "batch_size": 1 } },
+          "5": { "class_type": "EmptyLatentImage", "inputs": { "width": w, "height": h, "batch_size": 1 } },
           "6": { "class_type": "KSampler", "inputs": { "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler, "scheduler": scheduler, "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["9", 0], "latent_image": ["5", 0] } },
           "7": { "class_type": "VAEDecode", "inputs": { "samples": ["6", 0], "vae": ["3", 0] } },
           "8": { "class_type": "SaveImage", "inputs": { "filename_prefix": "epoch_gen", "images": ["7", 0] } }
@@ -1730,31 +1761,48 @@
       document.getElementById('btnApproveRef').disabled = true;
       document.getElementById('btnApproveRef').style.opacity = '0.5';
 
+      setSpriteStatus('🚦 Initializing hardware…', 'active');
+      showSpriteProgress(true);
+      setProgress(0);
+
       try {
         // SD 1.5 is default for sprites, but we use active model (probably FLUX or SD1.5)
         let steps = 4;
         let cfg = 2.0;
 
-        if (activeModelType === 'sd15' || activeModelType === 'sdxl') {
+        if (selectedModel.type === 'sd15' || selectedModel.type === 'sdxl') {
           steps = 20;
           cfg = 7.0;
-        } else if (activeModelType === 'sdxl_lightning') {
+        } else if (selectedModel.type === 'sdxl_lightning') {
           steps = 4;
           cfg = 2.0;
         }
 
         const workflowData = buildWorkflow(
-          activeModel,
-          activeModelType,
           positivePrompt,
           negativePrompt,
-          activeSpriteSize, // Width
-          activeSpriteSize, // Height
-          Math.floor(Math.random() * 9999999999), // Always random seed for reference
-          steps,
-          cfg
+          {
+            name: selectedModel.name,
+            type: selectedModel.type,
+            width: activeSpriteSize,
+            height: activeSpriteSize,
+            seed: Math.floor(Math.random() * 9999999999), // Always random seed for reference
+            steps: steps,
+            cfg: cfg
+          }
         );
 
+        // Wake up ComfyUI via Traffic Cop
+        setSpriteStatus('🚦 Waking up ComfyUI…', 'active');
+        document.getElementById('btnGenRef').textContent = '🚦 Waking up ComfyUI…';
+        const copRes = await fetch(`${TRAFFIC_COP}/comfyui/start`, { method: 'POST' });
+        const copData = await copRes.json();
+        if (copData.status !== 'success') {
+          throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);
+        }
+
+        setSpriteStatus('⏳ Generating Reference Frame…', 'active');
+        document.getElementById('btnGenRef').textContent = '⏳ Generating Reference…';
         const res = await fetch(`http://${COMFY_API}/prompt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1774,11 +1822,14 @@
         document.getElementById('btnApproveRef').disabled = false;
         document.getElementById('btnApproveRef').style.opacity = '1';
 
+        setSpriteStatus('✅ Reference character generated successfully!', 'success');
+
       } catch (err) {
-        alert(err.message);
+        setSpriteStatus(err.message, 'error');
         document.getElementById('spriteEmpty').style.display = 'block';
       } finally {
         document.getElementById('spriteLoaderWrap').classList.remove('visible');
+        showSpriteProgress(false);
         btn.disabled = false;
         btn.textContent = '✦ Generate Reference Frame';
       }
