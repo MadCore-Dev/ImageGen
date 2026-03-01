@@ -1773,9 +1773,22 @@
 
         <div class="action-row" style="margin-top:16px; margin-bottom:0; display:flex; gap:8px;">
           <button class="btn-download" id="downloadSheetBtn" onclick="downloadSpriteSheet()"
-            style="flex:1; display:none;">⬇ Download Full Sheet (PNG)</button>
+            aria-label="Download full sprite sheet as PNG" style="flex:1; display:none;">⬇ Download Full Sheet
+            (PNG)</button>
           <button class="btn-download" id="downloadZipBtn" onclick="downloadFramesZip()"
-            style="flex:1; display:none; background:var(--accent-2);">⬇ Download Individual Frames (ZIP)</button>
+            aria-label="Download individual frames as ZIP" style="flex:1; display:none; background:var(--accent-2);">⬇
+            Download Individual Frames (ZIP)</button>
+          <!-- fix #21: session export/import for backup & portability -->
+          <button class="btn-download" id="exportSessionBtn" onclick="exportSessionJSON()"
+            aria-label="Export current session config as JSON"
+            style="flex:1; display:none; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px;">📤
+            Export Session JSON</button>
+          <label class="btn-download"
+            style="flex:1; display:none; cursor:pointer; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px; text-align:center;"
+            id="importSessionLabel">
+            📥 Import Session JSON
+            <input type="file" accept=".json" onchange="importSessionJSON(event)" style="display:none;">
+          </label>
         </div>
       </div>
     </div>
@@ -3100,6 +3113,8 @@
       if (allDone) {
         document.getElementById('downloadSheetBtn').style.display = 'block';
         document.getElementById('downloadZipBtn').style.display = 'block';
+        document.getElementById('exportSessionBtn').style.display = 'block'; // fix #21
+        document.getElementById('importSessionLabel').style.display = 'block'; // fix #21
         setSpriteStatus('\u2728 Session restored — generation was complete!', 'success');
         return;
       }
@@ -3235,6 +3250,8 @@
         showSpriteProgress(false);
         document.getElementById('downloadSheetBtn').style.display = 'block';
         document.getElementById('downloadZipBtn').style.display = 'block';
+        document.getElementById('exportSessionBtn').style.display = 'block';
+        document.getElementById('importSessionLabel').style.display = 'block';
 
       } catch (err) {
         console.error('Resume failed:', err);
@@ -3619,10 +3636,58 @@
       if (!wasCancelled) {
         document.getElementById('downloadSheetBtn').style.display = 'block';
         document.getElementById('downloadZipBtn').style.display = 'block';
+        document.getElementById('exportSessionBtn').style.display = 'block';
+        document.getElementById('importSessionLabel').style.display = 'block';
       }
     }
 
-    // fix #20: only log temp uploads, log total when complete
+    // ============================================================
+    //  SESSION EXPORT / IMPORT — fix #21
+    // ============================================================
+    function exportSessionJSON() {
+      const session = loadSession(false);
+      const exportData = {
+        _exportedAt: new Date().toISOString(),
+        _version: 1,
+        selectedAnimations: session?.selectedAnimations || currentAnimationGrid,
+        framesCount: session?.framesCount || parseInt(document.getElementById('frameCountSlider')?.value) || 8,
+        spriteSize: session?.spriteSize || activeSpriteSize,
+        denoise: session?.denoise || parseFloat(document.getElementById('denoiseSlider')?.value) || 0.35,
+        basePositivePrompt: session?.basePositivePrompt || document.getElementById('spritePrompt')?.value || '',
+        baseNegativePrompt: session?.baseNegativePrompt || '',
+        poseOverrides: session?.poseOverrides || {},
+        completedFrames: session?.completedFrames || {},
+        baseRefUploadName: session?.baseRefUploadName || null
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const promptSlug = (exportData.basePositivePrompt || 'session').slice(0, 20).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+      a.download = `epoch_session_${promptSlug}_${Date.now()}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      setSpriteStatus('📤 Session exported to JSON!', 'success');
+    }
+
+    function importSessionJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data.selectedAnimations || !data.framesCount) throw new Error('Invalid session file — missing required fields.');
+          saveSession(data);
+          setSpriteStatus('📥 Session JSON imported! Tap Resume to restore.', 'success');
+          document.getElementById('recoveryBanner').style.display = 'block';
+        } catch (err) {
+          setSpriteStatus(`❌ Session import failed: ${err.message}`, 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // fix #20: log temp uploads on complete
     function logTempUploadsOnComplete() {
       if (_tempUploads.length > 0) {
         console.info(
