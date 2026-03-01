@@ -13,7 +13,7 @@ import { pollHistory, uploadImageToComfy } from './api.js';
 import { setSpriteStatus, showSpriteProgress, setProgress, setTabActivity } from './ui.js';
 import { buildWorkflow, buildImg2ImgWorkflow } from './workflows.js';
 import { saveSession, loadSession, clearSession } from './session.js';
-import { playAnimationLoop, retryAnimationRow } from './canvas.js';
+import { playAnimationLoop, retryAnimationRow, cancelRetryAnimation } from './canvas.js';
 
 // ============================================================
 //  SPRITE SHEET STAGE 1: REFERENCE GENERATION
@@ -336,6 +336,17 @@ export function cancelAnimationQueue() {
         _generationAbortController.abort();
         _generationAbortController = null;
     }
+    cancelRetryAnimation();
+
+    // Also tell ComfyUI backend to halt the GPU process
+    try {
+        fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
+        fetch(`http://${COMFY_API_LIVE}/queue`, {
+            method: 'POST',
+            body: JSON.stringify({ clear: true })
+        }).catch(() => { });
+    } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
+
     setSpriteStatus('⛔ Cancelling…', 'error');
     document.getElementById('btnCancelAnim').disabled = true;
     document.getElementById('btnCancelAnim').textContent = 'Cancelling...';

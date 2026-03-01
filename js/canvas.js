@@ -174,9 +174,29 @@ export async function copyFrameToClipboard() {
     }
 }
 
+let _retryAbortController = null;
+export let _cancelRetryFlag = false;
+
+export function cancelRetryAnimation() {
+    _cancelRetryFlag = true;
+    if (_retryAbortController) _retryAbortController.abort();
+}
+
 export async function retryAnimationRow(animId, rowIndex, framesCount) {
     const preset = ANIMATION_PRESETS.find(p => p.id === animId);
     if (!preset || !canvasCtx || !baseRefUploadName) return;
+
+    _cancelRetryFlag = false;
+    _retryAbortController = new AbortController();
+    const signal = _retryAbortController.signal;
+
+    // Show cancel button from Sprite tab
+    const cancelBtn = document.getElementById('btnCancelAnim');
+    if (cancelBtn) {
+        cancelBtn.style.display = 'block';
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = '⛔ Cancel Retry';
+    }
 
     const framesCountCurrent = framesCount;
     const denoise = parseFloat(document.getElementById('denoiseSlider').value) || 0.55;
@@ -190,10 +210,10 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
         : `${basePositivePrompt}, ${preset.pose}`;
 
     let currentFrameRefImg = baseRefUploadName;
-
     const timelineDiv = document.getElementById(`timeline_${animId}`);
 
     for (let c = 0; c < framesCountCurrent; c++) {
+        if (_cancelRetryFlag || signal.aborted) break;
         if (timelineDiv) timelineDiv.innerText = '✅'.repeat(c) + '⏳' + '⬜'.repeat(framesCountCurrent - c - 1);
         setSpriteStatus(`Retrying ${animId} - Frame ${c + 1}/${framesCountCurrent}...`, 'active');
 
@@ -210,14 +230,14 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
                 { name: retryModel.name, type: retryModel.type, steps, cfg, denoise }
             );
 
-
             const res = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
+                body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID }),
+                signal
             });
             if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
             const { prompt_id } = await res.json();
-            const filename = await pollHistory(prompt_id);
+            const filename = await pollHistory(prompt_id, signal);
             const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
 
             await new Promise((resolve, reject) => {
@@ -229,17 +249,26 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
                 img.onerror = reject; img.src = imgUrl;
             });
 
-            const blobRes = await fetch(imgUrl);
+            const blobRes = await fetch(imgUrl, { signal });
             const blob = await blobRes.blob();
             currentFrameRefImg = await uploadImageToComfy(blob, `recur_retry_${animId}_${c}.png`);
 
             if (timelineDiv) timelineDiv.innerText = '✅'.repeat(c + 1) + '⬜'.repeat(framesCountCurrent - c - 1);
         } catch (err) {
+            if (err.name === 'AbortError') break;
             if (timelineDiv) timelineDiv.innerText = '✅'.repeat(c) + '❌' + '⬜'.repeat(framesCountCurrent - c - 1);
             setSpriteStatus(`Retry error on ${animId} frame ${c + 1}: ${err.message}`, 'error');
+            break; // Don't continue making corrupted frames if one fails
         }
     }
-    setSpriteStatus(`✅ Row ${animId} retried!`, 'success');
+
+    _retryAbortController = null;
+    if (_cancelRetryFlag) {
+        setSpriteStatus(`⛔ Retry portion cancelled.`, 'error');
+    } else {
+        setSpriteStatus(`✅ Row ${animId} retried!`, 'success');
+    }
+    if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
 export function exportActiveAnimationGif() {

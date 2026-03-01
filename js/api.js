@@ -127,8 +127,11 @@ export async function pollHistory(prompt_id, signal = null) {
             }
             const outputs = entry.outputs;
             if (outputs) {
-                const nodeKey = Object.keys(outputs).find(k => outputs[k].images);
-                if (nodeKey) return outputs[nodeKey].images[0].filename;
+                const nodeKey = Object.keys(outputs).find(k => outputs[k].images || outputs[k].gifs);
+                if (nodeKey) {
+                    const list = outputs[nodeKey].images || outputs[nodeKey].gifs;
+                    return list[0].filename;
+                }
             }
         }
         await new Promise(r => setTimeout(r, 2000));
