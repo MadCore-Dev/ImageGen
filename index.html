@@ -903,6 +903,128 @@
     }
 
     /* ============================================================
+       CONNECTION PILL (header ComfyUI status)
+    ============================================================ */
+    .conn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      margin-top: 8px;
+      transition: all 0.4s ease;
+      cursor: default;
+      user-select: none;
+    }
+
+    .conn-pill .conn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.4s;
+    }
+
+    .conn-pill.online {
+      border-color: rgba(52, 211, 153, 0.3);
+      color: var(--success);
+    }
+
+    .conn-pill.online .conn-dot {
+      background: var(--success);
+      box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .conn-pill.offline {
+      border-color: rgba(248, 113, 113, 0.25);
+      color: var(--error);
+    }
+
+    .conn-pill.offline .conn-dot {
+      background: var(--error);
+    }
+
+    /* Char count warning states */
+    .char-count.warn {
+      color: var(--warning) !important;
+    }
+
+    .char-count.danger {
+      color: var(--error) !important;
+      font-weight: 700;
+    }
+
+    /* Style chip sub-label: only show on hover/active (less clutter) */
+    .style-chip .style-sub {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      font-size: 9px;
+    }
+
+    .style-chip:hover .style-sub,
+    .style-chip.active .style-sub {
+      opacity: 1;
+    }
+
+    /* Pulsing activity dot on tab button */
+    .tab-btn .tab-activity-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--warning);
+      margin-left: 5px;
+      vertical-align: middle;
+      animation: pulse-dot 1s ease-in-out infinite;
+      display: none;
+    }
+
+    .tab-btn.has-activity .tab-activity-dot {
+      display: inline-block;
+    }
+
+    /* Progress % label inline with status */
+    .status-pct {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: 'SF Mono', monospace;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .status-bar.active .status-pct {
+      opacity: 1;
+    }
+
+    /* Empty state CTA hint */
+    .empty-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .empty-hint kbd {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      font-family: 'SF Mono', monospace;
+      font-size: 10px;
+    }
+
+    /* ============================================================
        RECOVERY BANNER
     ============================================================ */
     #recoveryBanner {
@@ -977,13 +1099,21 @@
   <div class="app-wrapper">
     <header>
       <h1>🎨 Project Epoch</h1>
-      <p class="subtitle">Fully offline image generation powered by ComfyUI & your local models</p>
+      <p class="subtitle">Fully offline image generation powered by ComfyUI &amp; your local models</p>
+      <div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">
+        <span class="conn-pill" id="connPill">
+          <span class="conn-dot"></span>
+          <span id="connLabel">ComfyUI — checking…</span>
+        </span>
+      </div>
     </header>
 
     <!-- ── TABS NAVIGATION ── -->
     <div class="tab-nav">
-      <button class="tab-btn active" id="btnTabImagegen" onclick="switchTab('imagegen')">🎨 Image Gen</button>
-      <button class="tab-btn" id="btnTabSpritegen" onclick="switchTab('spritegen')">🕹 Sprite Sheet</button>
+      <button class="tab-btn active" id="btnTabImagegen" onclick="switchTab('imagegen')">🎨 Image Gen<span
+          class="tab-activity-dot"></span></button>
+      <button class="tab-btn" id="btnTabSpritegen" onclick="switchTab('spritegen')">🕹 Sprite Sheet<span
+          class="tab-activity-dot"></span></button>
     </div>
 
     <!-- ── TAB 1: IMAGE GEN ── -->
@@ -1130,6 +1260,7 @@
       <div class="status-bar" id="statusBar">
         <div class="status-dot"></div>
         <span id="statusText">Ready to generate</span>
+        <span class="status-pct" id="statusPct">0%</span>
       </div>
 
       <!-- ── PROGRESS BAR ── -->
@@ -1142,6 +1273,9 @@
         <div class="empty-state" id="emptyState">
           <div class="icon">🖼</div>
           <p>Your generated image will appear here</p>
+          <div class="empty-hint">
+            Pick a style &rarr; write a prompt &rarr; press <kbd>⌘ Enter</kbd>
+          </div>
         </div>
 
         <div class="loader-wrap" id="loaderWrap">
@@ -1211,6 +1345,7 @@
         <div class="status-bar" id="spriteStatusBar" style="margin-top:16px; display:none;">
           <div class="status-dot"></div>
           <span id="spriteStatusText">Ready to generate</span>
+          <span class="status-pct" id="spriteStatusPct">0%</span>
         </div>
 
         <!-- ── SPRITE PROGRESS BAR ── -->
@@ -1306,14 +1441,9 @@
             Cancel</button>
         </div>
       </div>
-      <!-- Action buttons: Start + Cancel -->
-      <div style="display:flex; gap:8px; margin-top:16px;">
-        <button class="btn-generate" id="btnStartAnim" onclick="startAnimationQueue()" disabled style="flex:2;">✦
-          Start Sequential Generation</button>
-        <button class="btn-cancel" id="btnCancelAnim" onclick="cancelAnimationQueue()" style="display:none;">⛔
-          Cancel</button>
-      </div>
     </div>
+
+
 
     <!-- ── STAGE 3 & 4: TIMELINE & RESULT CANVAS ── -->
     <div id="stage3Progress" style="display:none; margin-top:16px;">
@@ -1553,15 +1683,19 @@
     }
 
     // ============================================================
-    //  CHAR COUNT
+    //  CHAR COUNT (with warning colors)
     // ============================================================
     function updateCharCount() {
       const v = document.getElementById('promptInput').value.length;
-      document.getElementById('charCount').textContent = v;
+      const el = document.getElementById('charCount');
+      el.textContent = v;
+      el.className = 'char-count' + (v >= 300 ? ' danger' : v >= 200 ? ' warn' : '');
     }
     function updateNegCount() {
       const v = document.getElementById('negativeInput').value.length;
-      document.getElementById('negCount').textContent = v;
+      const el = document.getElementById('negCount');
+      el.textContent = v;
+      el.className = 'char-count' + (v >= 300 ? ' danger' : v >= 200 ? ' warn' : '');
     }
 
     // ============================================================
@@ -1575,16 +1709,48 @@
     }
 
     function setProgress(pc) {
-      // Improvement 5: Route progress bar update to whichever tab is currently visible
+      // Route to the active tab's bar
       const isSpriteTab = document.getElementById('tab-spritegen').classList.contains('active');
       if (isSpriteTab) {
         const sBar = document.getElementById('spriteProgressBar');
         if (sBar) sBar.style.width = `${pc}%`;
+        const pct = document.getElementById('spriteStatusPct');
+        if (pct) pct.textContent = `${pc}%`;
       } else {
         const bar = document.getElementById('progressBar');
         if (bar) bar.style.width = `${pc}%`;
+        const pct = document.getElementById('statusPct');
+        if (pct) pct.textContent = `${pc}%`;
       }
     }
+
+    // ============================================================
+    //  TAB ACTIVITY DOT (shows generation is happening on inactive tab)
+    // ============================================================
+    function setTabActivity(tabId, active) {
+      const btn = document.getElementById(`btnTab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
+      if (btn) btn.classList.toggle('has-activity', active);
+    }
+
+    // ============================================================
+    //  COMFYUI CONNECTION STATUS
+    // ============================================================
+    async function checkComfyStatus() {
+      const pill = document.getElementById('connPill');
+      const label = document.getElementById('connLabel');
+      try {
+        const res = await fetch(`http://${COMFY_API}/system_stats`, { signal: AbortSignal.timeout(3000) });
+        if (res.ok) {
+          pill.className = 'conn-pill online';
+          label.textContent = 'ComfyUI — Online';
+        } else { throw new Error('bad status'); }
+      } catch {
+        pill.className = 'conn-pill offline';
+        label.textContent = 'ComfyUI — Offline';
+      }
+    }
+    checkComfyStatus();
+    setInterval(checkComfyStatus, 30000);
 
     function showProgress(visible) {
       document.getElementById('progressContainer').classList.toggle('visible', visible);
@@ -1715,7 +1881,7 @@
       const seed = Math.floor(Math.random() * 9999999999);
       const steps = opts.steps || 15;
       const cfg = opts.cfg || 7.0;
-      const denoise = opts.denoise || 0.35;
+      const denoise = opts.denoise !== undefined ? opts.denoise : parseFloat(document.getElementById('denoiseSlider')?.value || 0.55);
 
       if (type === 'gguf') {
         // FLUX img2img
@@ -1818,6 +1984,7 @@
       const btn = document.getElementById('generateBtn');
       btn.disabled = true;
       btn.textContent = '⏳ Generating…';
+      setTabActivity('imagegen', true);
 
       // Reset UI
       document.getElementById('resultImage').style.display = 'none';
@@ -1891,6 +2058,8 @@
       } finally {
         btn.disabled = false;
         btn.textContent = '✦ Generate Image';
+        setTabActivity('imagegen', false);
+        checkComfyStatus();
       }
     }
 
@@ -2034,10 +2203,22 @@
     updateResolutionPresets('gguf');
 
     // ============================================================
-    //  KEYBOARD SHORTCUT: Cmd/Ctrl+Enter to generate
+    //  KEYBOARD SHORTCUT: Cmd/Ctrl+Enter (tab-aware)
     // ============================================================
     document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'Enter') return;
+      const isSpriteTab = document.getElementById('tab-spritegen').classList.contains('active');
+      if (isSpriteTab) {
+        const stage2 = document.getElementById('stage2Config');
+        const stage2Visible = stage2 && stage2.style.display !== 'none';
+        if (stage2Visible) {
+          const startBtn = document.getElementById('btnStartAnim');
+          if (!startBtn.disabled) startAnimationQueue();
+        } else {
+          const refBtn = document.getElementById('btnGenRef');
+          if (!refBtn.disabled) generateSpriteRef();
+        }
+      } else {
         const btn = document.getElementById('generateBtn');
         if (!btn.disabled) generateImage();
       }
@@ -2057,7 +2238,8 @@
     async function generateSpriteRef() {
       const userPrompt = document.getElementById('spritePrompt').value.trim();
       if (!userPrompt) {
-        alert('Please describe your character first.');
+        setSpriteStatus('Please describe your character first.', 'error');
+        document.getElementById('spriteStatusBar').style.display = 'flex';
         return;
       }
 
@@ -2087,14 +2269,15 @@
       setProgress(0);
 
       try {
-        // SD 1.5 is default for sprites, but we use active model (probably FLUX or SD1.5)
+        // Use selectedSpriteModel for all sprite generation (Fix #2)
+        const spriteModel = getSpriteModel();
         let steps = 4;
         let cfg = 2.0;
 
-        if (selectedModel.type === 'sd15' || selectedModel.type === 'sdxl') {
+        if (spriteModel.type === 'sd15' || spriteModel.type === 'sdxl') {
           steps = 20;
           cfg = 7.0;
-        } else if (selectedModel.type === 'sdxl_lightning') {
+        } else if (spriteModel.type === 'sdxl_lightning') {
           steps = 4;
           cfg = 2.0;
         }
@@ -2970,6 +3153,7 @@
       btn.textContent = '✦ Start Sequential Generation';
       document.getElementById('btnCancelAnim').style.display = 'none';
       cancelGenerationFlag = false;
+      setTabActivity('spritegen', false);
       // 💾 Clear session on completion so there's no stale recovery banner next time
       clearSession();
       if (!wasCancelled) {
@@ -3156,13 +3340,19 @@
         setSpriteStatus(`Retrying ${animId} - Frame ${c + 1}/${framesCountCurrent}...`, 'active');
 
         try {
-          let steps = 15; let cfg = 7.0;
-          if (selectedModel.type === 'sdxl_lightning') { steps = 4; cfg = 2.0; }
-
+          // Use sprite-specific model for retry
+          const retryModel = getSpriteModel();
+          let steps = 15, cfg = 7.0;
+          if (retryModel.type === 'sdxl_lightning') { steps = 6; cfg = 2.0; }
+          else if (retryModel.type === 'gguf') { steps = 4; cfg = 1.0; }
+          const denoise = parseFloat(document.getElementById('denoiseSlider')?.value || 0.55);
           const workflowData = buildImg2ImgWorkflow(
-            currentFrameRefImg, getFramePrompt(c), baseNegativePrompt,
-            { name: selectedModel.name, type: selectedModel.type, steps, cfg, denoise }
+            currentFrameRefImg,
+            getFramePrompt(c),
+            baseNegativePrompt,
+            { name: retryModel.name, type: retryModel.type, steps, cfg, denoise }
           );
+
 
           const res = await fetch(`http://${COMFY_API}/prompt`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
