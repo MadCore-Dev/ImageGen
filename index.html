@@ -238,6 +238,7 @@
     .control-item input[type="range"] {
       width: 100%;
       -webkit-appearance: none;
+      appearance: none;
       height: 4px;
       border-radius: 4px;
       background: rgba(255, 255, 255, 0.1);
@@ -293,6 +294,58 @@
       background: rgba(79, 143, 255, 0.18);
       color: #93c5fd;
       border-color: var(--accent);
+    }
+
+    /* ============================================================
+       INFO TRIGGER & TOOLTIP
+    ============================================================ */
+    .info-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      margin-left: 4px;
+      transition: color var(--transition);
+      vertical-align: middle;
+      user-select: none;
+    }
+
+    .info-trigger:hover {
+      color: var(--accent);
+    }
+
+    .info-tooltip {
+      display: none;
+      background: rgba(20, 25, 40, 0.95);
+      border: 1px solid rgba(79, 143, 255, 0.25);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      animation: fadeIn 0.15s ease;
+    }
+
+    .info-tooltip.visible {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* ============================================================
@@ -710,31 +763,62 @@
     <div class="card">
       <div class="card-label">Parameters</div>
 
-      <!-- Resolution Presets -->
+      <!-- Resolution Presets (model-aware) -->
       <div style="margin-bottom:16px;">
-        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:8px;">Resolution</label>
-        <div class="preset-btns">
-          <button class="preset-btn active" onclick="setPreset(512,512,this)">512×512</button>
-          <button class="preset-btn" onclick="setPreset(768,512,this)">768×512 (Land)</button>
-          <button class="preset-btn" onclick="setPreset(512,768,this)">512×768 (Port)</button>
-          <button class="preset-btn" onclick="setPreset(1024,1024,this)">1024×1024 (XL)</button>
-          <button class="preset-btn" onclick="setPreset(1024,576,this)">1024×576 (Cinema)</button>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <label style="font-size:11px; color:var(--text-muted);">Resolution</label>
+          <span id="minSizePill"
+            style="font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(251,191,36,0.12); color:#fcd34d; border:1px solid rgba(251,191,36,0.2);">Min:
+            512×512</span>
+        </div>
+        <div class="preset-btns" id="presetBtns">
+          <!-- populated by JS via updateResolutionPresets() -->
         </div>
       </div>
 
       <div class="controls-grid">
         <!-- Steps -->
         <div class="control-item">
-          <label>Steps <span class="value-display" id="stepsVal">15</span></label>
+          <label>
+            Steps
+            <span class="value-display" id="stepsVal">15</span>
+            <span class="info-trigger" onclick="toggleInfo('stepsInfo')" title="What is this?">ⓘ</span>
+          </label>
           <input type="range" id="stepsSlider" min="1" max="50" value="15"
             oninput="document.getElementById('stepsVal').textContent = this.value">
+          <div class="info-tooltip" id="stepsInfo">
+            <strong>Steps</strong> = how many denoising iterations the AI runs.<br><br>
+            <span style="color:var(--success)">More steps</span> → finer detail, longer wait.<br>
+            <span style="color:var(--warning)">Fewer steps</span> → faster, but may look unfinished.<br><br>
+            <em>Recommended per model:</em><br>
+            • FLUX Schnell: <strong>4–8</strong> (baked-in speed)<br>
+            • Lightning: <strong>6–10</strong><br>
+            • SDXL/SD1.5: <strong>20–30</strong><br>
+            • Beyond 50: almost never useful
+          </div>
         </div>
 
         <!-- CFG Scale -->
         <div class="control-item">
-          <label>CFG Scale <span class="value-display" id="cfgVal">7.0</span></label>
+          <label>
+            CFG Scale
+            <span class="value-display" id="cfgVal">7.0</span>
+            <span class="info-trigger" onclick="toggleInfo('cfgInfo')" title="What is this?">ⓘ</span>
+          </label>
           <input type="range" id="cfgSlider" min="1" max="20" step="0.5" value="7"
             oninput="document.getElementById('cfgVal').textContent = parseFloat(this.value).toFixed(1)">
+          <div class="info-tooltip" id="cfgInfo">
+            <strong>CFG Scale</strong> = how strictly the AI follows your prompt vs. being creative.<br><br>
+            <span style="color:var(--success)">Higher CFG (7–12)</span> → follows prompt closely, but can
+            over-saturate.<br>
+            <span style="color:var(--warning)">Lower CFG (1–3)</span> → more artistic freedom, prompt loosely
+            followed.<br><br>
+            <em>Recommended per model:</em><br>
+            • FLUX Schnell: <strong>1.0</strong> (architecture ignores CFG)<br>
+            • Lightning: <strong>2–3</strong><br>
+            • SDXL: <strong>6–8</strong><br>
+            • SD 1.5: <strong>7–9</strong>
+          </div>
         </div>
       </div>
 
@@ -811,6 +895,87 @@
     let imgHeight = 512;
 
     // ============================================================
+    //  MODEL CAPABILITY TABLE
+    // ============================================================
+    const MODEL_SPECS = {
+      gguf: {
+        minW: 256, minH: 256,
+        minLabel: 'Min: 256×256',
+        presets: [
+          { w: 512, h: 512, label: '512×512 ✦ Optimal' },
+          { w: 768, h: 512, label: '768×512 (Land)' },
+          { w: 512, h: 768, label: '512×768 (Port)' }
+        ],
+        defaultW: 512, defaultH: 512
+      },
+      sdxl: {
+        minW: 768, minH: 768,
+        minLabel: 'Min: 768×768',
+        presets: [
+          { w: 1024, h: 1024, label: '1024×1024 ✦ Optimal' },
+          { w: 1152, h: 768, label: '1152×768 (Land)' },
+          { w: 768, h: 1152, label: '768×1152 (Port)' },
+          { w: 1216, h: 832, label: '1216×832 (Cinema)' },
+          { w: 768, h: 768, label: '768×768 (Min)' }
+        ],
+        defaultW: 1024, defaultH: 1024
+      },
+      sdxl_lightning: {
+        minW: 768, minH: 768,
+        minLabel: 'Min: 768×768',
+        presets: [
+          { w: 1024, h: 1024, label: '1024×1024 ✦ Optimal' },
+          { w: 1152, h: 768, label: '1152×768 (Land)' },
+          { w: 768, h: 1152, label: '768×1152 (Port)' },
+          { w: 768, h: 768, label: '768×768 (Min)' }
+        ],
+        defaultW: 1024, defaultH: 1024
+      },
+      sd15: {
+        minW: 256, minH: 256,
+        minLabel: 'Min: 256×256',
+        presets: [
+          { w: 512, h: 512, label: '512×512 ✦ Optimal' },
+          { w: 768, h: 512, label: '768×512 (Land)' },
+          { w: 512, h: 768, label: '512×768 (Port)' },
+          { w: 704, h: 512, label: '704×512 (Wide)' }
+        ],
+        defaultW: 512, defaultH: 512
+      }
+    };
+
+    // ============================================================
+    //  RESOLUTION PRESETS (dynamic, model-aware)
+    // ============================================================
+    function updateResolutionPresets(type) {
+      const spec = MODEL_SPECS[type] || MODEL_SPECS.sd15;
+      const container = document.getElementById('presetBtns');
+      container.innerHTML = '';
+
+      // Set default size for new model type
+      imgWidth = spec.defaultW;
+      imgHeight = spec.defaultH;
+
+      // Rebuild preset buttons
+      spec.presets.forEach((p, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn' + (i === 0 ? ' active' : '');
+        btn.textContent = p.label;
+        btn.onclick = () => setPreset(p.w, p.h, btn);
+        container.appendChild(btn);
+      });
+
+      document.getElementById('minSizePill').textContent = spec.minLabel;
+    }
+
+    function setPreset(w, h, btn) {
+      imgWidth = w;
+      imgHeight = h;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    // ============================================================
     //  MODEL SELECTION
     // ============================================================
     function selectModel(chip) {
@@ -818,34 +983,28 @@
       chip.classList.add('active');
       selectedModel = { name: chip.dataset.model, type: chip.dataset.type };
 
-      // Auto-adjust recommended defaults per model type
+      const type = chip.dataset.type;
+
+      // Update resolution presets for this model type
+      updateResolutionPresets(type);
+
+      // Auto-adjust recommended Steps + CFG
       const stepsSlider = document.getElementById('stepsSlider');
       const cfgSlider = document.getElementById('cfgSlider');
 
-      if (chip.dataset.type === 'gguf') {
+      if (type === 'gguf') {
         stepsSlider.value = 4; document.getElementById('stepsVal').textContent = '4';
         cfgSlider.value = 1; document.getElementById('cfgVal').textContent = '1.0';
-      } else if (chip.dataset.type === 'sdxl_lightning') {
+      } else if (type === 'sdxl_lightning') {
         stepsSlider.value = 6; document.getElementById('stepsVal').textContent = '6';
         cfgSlider.value = 2; document.getElementById('cfgVal').textContent = '2.0';
-      } else if (chip.dataset.type === 'sdxl') {
+      } else if (type === 'sdxl') {
         stepsSlider.value = 25; document.getElementById('stepsVal').textContent = '25';
         cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
       } else {
-        // sd15
         stepsSlider.value = 20; document.getElementById('stepsVal').textContent = '20';
         cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
       }
-    }
-
-    // ============================================================
-    //  RESOLUTION PRESETS
-    // ============================================================
-    function setPreset(w, h, btn) {
-      imgWidth = w;
-      imgHeight = h;
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
     }
 
     // ============================================================
@@ -1109,6 +1268,19 @@
       link.download = `epoch_${lastSeed || Date.now()}.png`;
       link.click();
     }
+
+    // ============================================================
+    //  INFO TOOLTIP TOGGLE
+    // ============================================================
+    function toggleInfo(id) {
+      const el = document.getElementById(id);
+      el.classList.toggle('visible');
+    }
+
+    // ============================================================
+    //  PAGE INIT: populate FLUX presets on first load
+    // ============================================================
+    updateResolutionPresets('gguf');
 
     // ============================================================
     //  KEYBOARD SHORTCUT: Cmd/Ctrl+Enter to generate
