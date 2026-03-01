@@ -71,9 +71,18 @@ function syncBottomNav(tabId) {
 }
 
 export function cancelGenerateImage() {
+    _cancelFlag = true;
     if (_tab1AbortController) {
         _tab1AbortController.abort();
     }
+    // Also tell ComfyUI backend to halt the GPU process
+    try {
+        fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
+        fetch(`http://${COMFY_API_LIVE}/queue`, {
+            method: 'POST',
+            body: JSON.stringify({ clear: true })
+        }).catch(() => { });
+    } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
 }
 
 const _originalGenerateImage = async function (signal, isBatchRun = false) {

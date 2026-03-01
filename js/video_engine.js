@@ -20,6 +20,14 @@ let _videoCancelFlag = false;
 export function cancelVideoGen() {
     _videoCancelFlag = true;
     if (_videoAbortController) _videoAbortController.abort();
+    // Also tell ComfyUI backend to halt the GPU process
+    try {
+        fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
+        fetch(`http://${COMFY_API_LIVE}/queue`, {
+            method: 'POST',
+            body: JSON.stringify({ clear: true })
+        }).catch(() => { });
+    } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
 }
 
 export function selectVideoModel(chip) {
