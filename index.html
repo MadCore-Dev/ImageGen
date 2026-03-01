@@ -31,7 +31,7 @@
       <div class="settings-row">
         <label>ComfyUI Output Folder</label>
         <input type="text" id="settingOutputPath" placeholder="/Users/yourname/.ComfyUI/output">
-        <div class="settings-hint">Shown in the header for reference only</div>
+        <div class="settings-hint">Where ComfyUI saves generated images/animations</div>
       </div>
       <button id="btnSaveSettings" class="btn-settings-save">Save &amp; Apply</button>
     </div>
@@ -45,16 +45,6 @@
         <span class="conn-pill" id="connPill">
           <span class="conn-dot"></span>
           <span id="connLabel">ComfyUI — checking…</span>
-        </span>
-        <span class="conn-pill" id="outputFolderPill"
-          title="Click 📋 to copy path, then open Finder (Shift+⌘+G) and paste">
-          📂 <span id="outputFolderPath"
-            style="font-family:'SF Mono',monospace; font-size:10px;">/Users/manojsamal/.ComfyUI/output</span>
-          <button id="btnCopyOutputPath"
-            style="background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;color:inherit;"
-            title="Copy path">
-            <span id="copyOutputLabel">📋 Copy</span>
-          </button>
         </span>
         <button id="btnOpenSettings"
           style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--text-muted); cursor:pointer;">
