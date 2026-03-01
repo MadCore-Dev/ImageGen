@@ -171,21 +171,13 @@ The `buildWorkflow()` function produces 8-node inline JS objects manually. This 
 
 ## 🟢 P3 — Advanced Features & Future Polish
 
-### 1. ControlNet Integration for Sprite Consistency *(from original audit)*
+### 1. ControlNet Integration for Sprite Consistency ~~(*Removed — Unity-specific*)~~
 
-The recursive img2img approach accumulates drift over long animation sequences. Frames 7/8 of a death animation will frequently lose character identity compared to frame 1.
+> This was designed around using Unity ProBuilder depth maps as ControlNet conditioning inputs. Without Unity as part of the pipeline, there is no practical source for frame-accurate depth maps. Removed.
 
-- **Upgrade:** Integrate a ControlNet (OpenPose or Depth) workflow. Pre-render primitive 3D stick figures from Unity ProBuilder for each animation frame. Feed them as depth map conditioning alongside img2img to maintain character silhouette and alignment frame-by-frame.
+### 2. Python Backend (`start_gen.sh`) — FastAPI Upgrade ~~(*Removed — moot*)~~
 
-### 2. Python Backend (`start_gen.sh`) — FastAPI Upgrade *(from original audit)*
-
-`python3 -m http.server` is synchronous, single-threaded, has no CORS handling, and can't do any server-side file operations.
-
-- **Upgrade:** Replace with a minimal `FastAPI` server that exposes:
-  - `GET /config` — returns the stored ComfyUI address, Traffic Cop address, output path
-  - `POST /config` — saves settings to a `config.json` file (fixes the hardcoded path issue)
-  - `POST /save-sprite` — takes a base64 canvas, slices it into frames, saves to a local project directory
-  - Integrate with SwiftBar by having the FastAPI server expose a `/status` endpoint that the SwiftBar plugin pings.
+> All the concrete problems this was meant to solve have been addressed: ComfyUI/TrafficCop config is now in `localStorage` (fix #6), the `/status` endpoint is replaced by `/tmp/.gen_tool_port` (fix #37), and `POST /save-sprite` was only needed for #25 (removed). The static `python3 -m http.server` is sufficient for a solo local tool.
 
 ### 3. Native "Send to Unity" Button *(from original audit)*
 
@@ -319,10 +311,6 @@ The recursive img2img approach accumulates drift over long animation sequences. 
 | 21 | Session export/import as JSON | 🟢 P3 | 2hr | ✅ Done |
 | 22 | Descriptive filenames for sprite sheet + ZIP exports | 🟢 P3 | 15min | ✅ Done |
 | 23 | LoRA support in GGUF workflow | 🟢 P3 | 2hr | ⏳ Future |
-| 24 | FastAPI backend upgrade | 🟢 P3 | 4hr | ⏳ Future |
-| 26 | ControlNet integration for sprite frame consistency | 🟢 P3 | 4hr | ⏳ Future |
-| 27 | Accessibility: aria-label, aria-checked, aria-live | 🟢 P3 | 1hr | ✅ Done |
-| 28 | CSS theme switcher (data-theme, token export) | 🟢 P3 | 1hr | ✅ Done |
 | 29 | Drag-and-drop frame reordering in preview modal | 🟢 P3 | 3hr | ⏳ Future |
 | 30 | CSS skeleton loaders + cycling tips during generation | 🟢 P3 | 2hr | ⏳ Future |
 | 31 | ComfyUI `/input` folder cleanup after generation (disk bloat) | 🟠 P1 | 2hr | ✅ Done |
@@ -332,6 +320,8 @@ The recursive img2img approach accumulates drift over long animation sequences. 
 | 35 | Custom upload resolution cap (prevent OOM from 4K uploads) | 🟡 P2 | 1hr | ✅ Done |
 | 36 | `imageSmoothingEnabled = false` on all canvas 2D contexts | 🟢 P3 | 15min | ✅ Done |
 | 37 | SwiftBar plugin — `ai_manager.3s.sh` updated with View Logs shortcut | 🟢 P3 | 30min | ✅ Done |
+| 27 | Accessibility: aria-label, aria-checked, aria-live | 🟢 P3 | 1hr | ✅ Done |
+| 28 | CSS theme switcher (data-theme, token export) | 🟢 P3 | 1hr | ✅ Done |
 
 ---
 
