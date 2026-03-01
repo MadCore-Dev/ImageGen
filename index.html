@@ -1203,10 +1203,191 @@
         font-size: 20px;
       }
     }
+
+    /* ============================================================
+       TIMELINE ROW — fix #9: class-based, no inline styles
+    ============================================================ */
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .timeline-label {
+      width: 80px;
+      font-weight: bold;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+
+    .timeline-frames {
+      letter-spacing: 2px;
+      flex: 1;
+      font-size: 13px;
+    }
+
+    .timeline-btn {
+      padding: 2px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+
+    .timeline-play {
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .timeline-retry {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .timeline-retry:hover {
+      border-color: var(--warning);
+      color: var(--warning);
+    }
+
+    /* ============================================================
+       SETTINGS MODAL — fix #6
+    ============================================================ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #141420;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 420px;
+      max-width: 90vw;
+      position: relative;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-box h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      color: var(--text-primary);
+    }
+
+    .settings-row {
+      margin-bottom: 14px;
+    }
+
+    .settings-row label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .settings-row input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      font-family: 'SF Mono', monospace;
+      transition: border var(--transition);
+    }
+
+    .settings-row input:focus {
+      border-color: var(--border-focus);
+    }
+
+    .settings-hint {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 3px;
+    }
+
+    .btn-settings-save {
+      width: 100%;
+      margin-top: 8px;
+      padding: 11px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-settings-save:hover {
+      background: #6b9fff;
+    }
+
+    .btn-settings-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+    }
   </style>
 </head>
 
 <body>
+  <!-- ============================================================
+     SETTINGS MODAL — fix #6: configurable ComfyUI/TrafficCop addresses
+  ============================================================ -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-box">
+      <button class="btn-settings-close" onclick="closeSettings()">&#x2715;</button>
+      <h3>⚙️ Connection Settings</h3>
+      <div class="settings-row">
+        <label>ComfyUI API Address</label>
+        <input type="text" id="settingComfyApi" placeholder="127.0.0.1:8188">
+        <div class="settings-hint">Default: 127.0.0.1:8188</div>
+      </div>
+      <div class="settings-row">
+        <label>Traffic Cop Address</label>
+        <input type="text" id="settingTrafficCop" placeholder="http://127.0.0.1:5050">
+        <div class="settings-hint">Default: http://127.0.0.1:5050</div>
+      </div>
+      <div class="settings-row">
+        <label>ComfyUI Output Folder</label>
+        <input type="text" id="settingOutputPath" placeholder="/Users/yourname/.ComfyUI/output">
+        <div class="settings-hint">Shown in the header for reference only</div>
+      </div>
+      <button class="btn-settings-save" onclick="saveSettings()">Save &amp; Apply</button>
+    </div>
+  </div>
+
   <div class="app-wrapper">
     <header>
       <h1>🎨 Project Epoch</h1>
@@ -1226,6 +1407,10 @@
             <span id="copyOutputLabel">📋 Copy</span>
           </button>
         </span>
+        <button onclick="openSettings()"
+          style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--text-muted); cursor:pointer;">
+          ⚙️ Settings
+        </button>
       </div>
     </header>
 
@@ -1663,6 +1848,56 @@
       }
     };
 
+    // ============================================================
+    //  SETTINGS — fix #6: persistent ComfyUI/TrafficCop config via localStorage
+    // ============================================================
+    let COMFY_API_LIVE = localStorage.getItem('setting_comfy_api') || COMFY_API;
+    let TRAFFIC_COP_LIVE = localStorage.getItem('setting_traffic_cop') || TRAFFIC_COP;
+    let OUTPUT_PATH_LIVE = localStorage.getItem('setting_output_path') || '/Users/manojsamal/.ComfyUI/output';
+
+    function loadSettings() {
+      COMFY_API_LIVE = localStorage.getItem('setting_comfy_api') || COMFY_API;
+      TRAFFIC_COP_LIVE = localStorage.getItem('setting_traffic_cop') || TRAFFIC_COP;
+      OUTPUT_PATH_LIVE = localStorage.getItem('setting_output_path') || '/Users/manojsamal/.ComfyUI/output';
+      const el = document.getElementById('outputFolderPath');
+      if (el) el.textContent = OUTPUT_PATH_LIVE;
+    }
+
+    function openSettings() {
+      document.getElementById('settingComfyApi').value = COMFY_API_LIVE;
+      document.getElementById('settingTrafficCop').value = TRAFFIC_COP_LIVE;
+      document.getElementById('settingOutputPath').value = OUTPUT_PATH_LIVE;
+      document.getElementById('settingsModal').classList.add('open');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('open');
+    }
+
+    function saveSettings() {
+      const api = document.getElementById('settingComfyApi').value.trim();
+      const tc = document.getElementById('settingTrafficCop').value.trim();
+      const op = document.getElementById('settingOutputPath').value.trim();
+      if (api) { localStorage.setItem('setting_comfy_api', api); COMFY_API_LIVE = api; }
+      if (tc) { localStorage.setItem('setting_traffic_cop', tc); TRAFFIC_COP_LIVE = tc; }
+      if (op) {
+        localStorage.setItem('setting_output_path', op);
+        OUTPUT_PATH_LIVE = op;
+        const el = document.getElementById('outputFolderPath');
+        if (el) el.textContent = op;
+      }
+      closeSettings();
+      // Reconnect WebSocket with updated API address
+      wsRetries = 0;
+      initWebSocket();
+    }
+
+    // Close modal on overlay click or Escape key
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+    document.getElementById('settingsModal').addEventListener('click', e => {
+      if (e.target === document.getElementById('settingsModal')) closeSettings();
+    });
+
     // Tab state (#17: use data-tab attribute for cleaner, more robust lookups)
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -1875,7 +2110,7 @@
       const pill = document.getElementById('connPill');
       const label = document.getElementById('connLabel');
       try {
-        const res = await fetch(`http://${COMFY_API}/system_stats`, { signal: AbortSignal.timeout(3000) });
+        const res = await fetch(`http://${COMFY_API_LIVE}/system_stats`, { signal: AbortSignal.timeout(3000) });
         if (res.ok) {
           pill.className = 'conn-pill online';
           label.textContent = 'ComfyUI — Online';
@@ -1940,7 +2175,7 @@
         return;
       }
 
-      socket = new WebSocket(`ws://${COMFY_API}/ws?clientId=${CLIENT_ID}`);
+      socket = new WebSocket(`ws://${COMFY_API_LIVE}/ws?clientId=${CLIENT_ID}`);
 
       socket.onopen = () => { wsRetries = 0; };
 
@@ -2090,7 +2325,7 @@
       formData.append('type', 'input');
       formData.append('overwrite', 'true');
 
-      const res = await fetch(`http://${COMFY_API}/upload/image`, {
+      const res = await fetch(`http://${COMFY_API_LIVE}/upload/image`, {
         method: 'POST',
         body: formData
       });
@@ -2112,7 +2347,7 @@
           throw new Error('ComfyUI generation timed out (No progress/heartbeat for 30 minutes).');
         }
 
-        const res = await fetch(`http://${COMFY_API}/history/${prompt_id}`);
+        const res = await fetch(`http://${COMFY_API_LIVE}/history/${prompt_id}`);
         const history = await res.json();
         if (history[prompt_id]) {
           const entry = history[prompt_id];
@@ -2173,15 +2408,17 @@
       setProgress(0);
       setStatus('🚦 Contacting Traffic Cop: Preparing hardware…', 'active');
 
-      initWebSocket();
-
       try {
         // 1. Wake up ComfyUI via Traffic Cop
-        const copRes = await fetch(`${TRAFFIC_COP}/comfyui/start`, { method: 'POST' });
+        const copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, { method: 'POST' });
         const copData = await copRes.json();
         if (copData.status !== 'success') {
           throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);
         }
+
+        // fix #20: init WebSocket AFTER Traffic Cop confirms ComfyUI is up
+        wsRetries = 0;
+        initWebSocket();
 
         setStatus(`🎨 ComfyUI Ready. Queuing ${selectedModel.name.replace('.safetensors', '')} workflow…`, 'active');
         document.getElementById('loaderLabel').textContent = 'Queueing prompt...';
@@ -2190,7 +2427,7 @@
         const workflow = buildWorkflow(positivePrompt, negativePrompt);
 
         // 3. Queue the prompt
-        const queueRes = await fetch(`http://${COMFY_API}/prompt`, {
+        const queueRes = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: workflow, client_id: CLIENT_ID })
@@ -2224,7 +2461,7 @@
           setStatus('❌ Image loaded but could not be displayed. Check ComfyUI output folder.', 'error');
           document.getElementById('loaderWrap').classList.remove('visible');
         };
-        imgEl.src = `http://${COMFY_API}/view?filename=${filename}&type=output`;
+        imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output`;
 
       } catch (err) {
         console.error(err);
@@ -2262,7 +2499,7 @@
     function downloadImage() {
       if (!lastFilename) return;
       const link = document.createElement('a');
-      link.href = `http://${COMFY_API}/view?filename=${lastFilename}&type=output`;
+      link.href = `http://${COMFY_API_LIVE}/view?filename=${lastFilename}&type=output`;
       link.download = `epoch_${lastSeed || Date.now()}.png`;
       link.click();
     }
@@ -2475,7 +2712,7 @@
         // Wake up ComfyUI via Traffic Cop
         setSpriteStatus('🚦 Waking up ComfyUI…', 'active');
         document.getElementById('btnGenRef').textContent = '🚦 Waking up ComfyUI…';
-        const copRes = await fetch(`${TRAFFIC_COP}/comfyui/start`, { method: 'POST' });
+        const copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, { method: 'POST' });
         const copData = await copRes.json();
         if (copData.status !== 'success') {
           throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);
@@ -2483,7 +2720,7 @@
 
         setSpriteStatus('⏳ Generating Reference Frame…', 'active');
         document.getElementById('btnGenRef').textContent = '⏳ Generating Reference…';
-        const res = await fetch(`http://${COMFY_API}/prompt`, {
+        const res = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
@@ -2497,7 +2734,7 @@
 
         const filename = await pollHistory(data.prompt_id);
 
-        const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
         document.getElementById('spriteRefImg').src = imgUrl;
         document.getElementById('spriteRefImg').style.display = 'block';
 
@@ -2534,8 +2771,15 @@
       setProgress(50);
 
       try {
-        baseRefBlob = file;
-        const imgUrl = URL.createObjectURL(file);
+        // fix #35: resize image to safe resolution before storing, prevent OOM on 4K uploads
+        const maxSide = Math.max(activeSpriteSize * 4, 1024);
+        const resizedBlob = await resizeImageBlob(file, maxSide);
+        baseRefBlob = resizedBlob;
+        const imgUrl = URL.createObjectURL(resizedBlob);
+
+        // Revoke previous blob URL if any
+        const prevSrc = document.getElementById('spriteRefImg').src;
+        if (prevSrc.startsWith('blob:')) URL.revokeObjectURL(prevSrc);
 
         document.getElementById('spriteEmpty').style.display = 'none';
         document.getElementById('spriteLoaderWrap').classList.remove('active');
@@ -2544,7 +2788,7 @@
 
         document.getElementById('btnApproveRef').disabled = false;
 
-        setSpriteStatus('Custom reference loaded!', 'success');
+        setSpriteStatus(`Custom reference loaded (resized to ${maxSide}px max)!`, 'success');
         showSpriteProgress(false);
 
       } catch (err) {
@@ -2552,6 +2796,28 @@
         setSpriteStatus('Failed to load custom image', 'error');
         showSpriteProgress(false);
       }
+    }
+
+    // fix #35: helper — resize an image Blob to maxSide px, returns a new Blob
+    function resizeImageBlob(blob, maxSide) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(blob);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.imageSmoothingEnabled = true; // intentional: smooth on resize, pixel-art mode applied at draw time
+          ctx.drawImage(img, 0, 0, w, h);
+          c.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+        img.src = url;
+      });
     }
     const ANIMATION_PRESETS = [
       {
@@ -2848,7 +3114,7 @@
           setSpriteStatus(`Reconnecting to ${activeAnimId} frame ${startFrameIndex + 1}...`, 'active');
           try {
             const filename = await pollHistory(activePromptId);
-            const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+            const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
             await new Promise((resolve, reject) => {
               const img = new Image(); img.crossOrigin = 'Anonymous';
               img.onload = () => {
@@ -2910,7 +3176,7 @@
                 currentFrameRefImg, getFramePrompt(c), s.baseNegativePrompt || '',
                 { name: selectedModel.name, type: selectedModel.type, steps, cfg, denoise: s.denoise || 0.55 }
               );
-              const res = await fetch(`http://${COMFY_API}/prompt`, {
+              const res = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: wd, client_id: CLIENT_ID })
               });
@@ -2918,7 +3184,7 @@
               const { prompt_id } = await res.json();
               saveSession({ activePromptId: prompt_id, activeFrameIndex: c });
               const filename = await pollHistory(prompt_id);
-              const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+              const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
               await new Promise((resolve, reject) => {
                 const img = new Image(); img.crossOrigin = 'Anonymous';
                 img.onload = () => {
@@ -3047,7 +3313,44 @@
     // ============================================================
     let canvasCtx = null;
     let baseRefUploadName = null;
-    let cancelGenerationFlag = false; // P2 Gap 2: Cancel support
+    let cancelGenerationFlag = false;
+    let _tempUploads = []; // fix #31: track temp ComfyUI input filenames for cleanup logging
+
+    // ============================================================
+    //  TIMELINE ROW BUILDER — fix #9: reusable helper, no inline styles
+    // ============================================================
+    function buildTimelineRow(animId, preset, framesCount, rowIndex) {
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'timeline-row';
+
+      const label = document.createElement('div');
+      label.className = 'timeline-label';
+      label.innerText = preset?.name || animId;
+      rowDiv.appendChild(label);
+
+      const framesDiv = document.createElement('div');
+      framesDiv.id = `timeline_${animId}`;
+      framesDiv.className = 'timeline-frames';
+      framesDiv.innerText = '⬜'.repeat(framesCount);
+      rowDiv.appendChild(framesDiv);
+
+      const playBtn = document.createElement('button');
+      playBtn.className = 'timeline-btn timeline-play';
+      playBtn.innerText = '▶️ Play';
+      playBtn.style.display = 'none';
+      playBtn.onclick = () => playAnimationLoop(animId, rowIndex, framesCount);
+      rowDiv.appendChild(playBtn);
+
+      const retryRowBtn = document.createElement('button');
+      retryRowBtn.className = 'timeline-btn timeline-retry';
+      retryRowBtn.innerText = '♻️';
+      retryRowBtn.title = 'Retry entire row';
+      retryRowBtn.style.display = 'none';
+      retryRowBtn.onclick = () => retryAnimationRow(animId, rowIndex, framesCount);
+      rowDiv.appendChild(retryRowBtn);
+
+      return { rowDiv, framesDiv, playBtn, retryRowBtn };
+    }
 
     function cancelAnimationQueue() {
       cancelGenerationFlag = true;
@@ -3105,6 +3408,7 @@
       canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 
       // 1. Upload the reference image to ComfyUI if we haven't already
+      _tempUploads = []; // fix #31: reset temp upload list for this run
       if (!baseRefUploadName) {
         setSpriteStatus('⬆️ Uploading reference frame to ComfyUI...', 'active');
         const src = document.getElementById('spriteRefImg').src;
@@ -3112,6 +3416,7 @@
           const res = await fetch(src);
           const blob = await res.blob();
           baseRefUploadName = await uploadImageToComfy(blob, `ref_${Date.now()}.png`);
+          _tempUploads.push(baseRefUploadName); // fix #31: track for cleanup
         } catch (err) {
           setSpriteStatus(`Upload failed: ${err.message}`, 'error');
           btn.disabled = false;
@@ -3142,60 +3447,23 @@
         lastFrameRefImg: baseRefUploadName
       });
 
-      // 2. Setup Timeline UI Rows
+      // 2. Setup Timeline UI Rows — fix #8: use selectedAnims (local), not selectedAnimations (stale global)
       const rowStatuses = {};
-      selectedAnimations.forEach((animId, rowIndex) => {
+      selectedAnims.forEach((animId, rowIndex) => {
         const preset = ANIMATION_PRESETS.find(a => a.id === animId);
 
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'timeline-row';
-        rowDiv.style.display = 'flex';
-        rowDiv.style.alignItems = 'center';
-        rowDiv.style.gap = '8px';
-        rowDiv.style.padding = '8px';
-        rowDiv.style.background = 'rgba(255,255,255,0.03)';
-        rowDiv.style.borderRadius = '6px';
-        rowDiv.style.fontSize = '12px';
-
-        const label = document.createElement('div');
-        label.style.width = '80px';
-        label.style.fontWeight = 'bold';
-        label.innerText = preset.name;
-        rowDiv.appendChild(label);
-
-        const framesDiv = document.createElement('div');
-        framesDiv.id = `timeline_${animId}`;
-        framesDiv.style.letterSpacing = '2px';
-        framesDiv.style.flex = '1';
-        framesDiv.innerText = '⬜'.repeat(framesCount);
-        rowDiv.appendChild(framesDiv);
-
-        const playBtn = document.createElement('button');
-        playBtn.innerText = '▶️ Play';
-        playBtn.style.cssText = 'padding:2px 8px; font-size:10px; cursor:pointer; background:var(--accent-glow); border:1px solid var(--accent); color:var(--accent); border-radius:4px; display:none;';
-        playBtn.onclick = () => playAnimationLoop(animId, rowIndex, framesCount);
-        rowDiv.appendChild(playBtn);
-
-        // Retry Row button (P3 Gap 1)
-        const retryRowBtn = document.createElement('button');
-        retryRowBtn.innerText = '♻️';
-        retryRowBtn.title = 'Retry entire row';
-        retryRowBtn.style.cssText = 'padding:2px 6px; font-size:10px; cursor:pointer; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; display:none;';
-        retryRowBtn.onclick = () => retryAnimationRow(animId, rowIndex, framesCount);
-        rowDiv.appendChild(retryRowBtn);
-
+        // fix #9: build row via helper instead of 10+ inline style properties
+        const { rowDiv, framesDiv, playBtn, retryRowBtn } = buildTimelineRow(animId, preset, framesCount, rowIndex);
         timelineContainer.appendChild(rowDiv);
 
-        // Read the custom override from the input field if it exists
         const overrideInput = document.getElementById(`poseOverride_${animId}`);
         const activePose = overrideInput ? overrideInput.value.trim() : preset.pose;
-
         rowStatuses[animId] = { div: framesDiv, playBtn, retryRowBtn, currentFrame: 0, pose: activePose };
       });
 
-      // 3. Execute Queue (Sequential Loop)
-      for (let r = 0; r < selectedAnimations.length; r++) {
-        const animId = selectedAnimations[r];
+      // 3. Execute Queue (Sequential Loop) — fix #8: use selectedAnims (local) not stale global
+      for (let r = 0; r < selectedAnims.length; r++) {
+        const animId = selectedAnims[r];
         const status = rowStatuses[animId];
         // Get the preset for THIS animation to access its keyframes
         const preset = ANIMATION_PRESETS.find(p => p.id === animId);
@@ -3251,7 +3519,7 @@
             );
 
             // Fire prompt
-            const res = await fetch(`http://${COMFY_API}/prompt`, {
+            const res = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
@@ -3264,7 +3532,7 @@
 
             // Wait for generation
             const filename = await pollHistory(data.prompt_id);
-            const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+            const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
 
             // Draw to canvas
             await new Promise((resolve, reject) => {
@@ -3284,8 +3552,9 @@
             const newlyGeneratedBlobRes = await fetch(imgUrl);
             const newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
             currentFrameRefImg = await uploadImageToComfy(newlyGeneratedBlob, `recur_${animId}_${c}_${Date.now()}.png`);
+            _tempUploads.push(currentFrameRefImg); // fix #31: track for cleanup
 
-            // 💾 Save frame result + canvas snapshot after each successful draw
+            // fix #5: save only metadata (no canvas blob) to avoid localStorage quota crash
             const sessionState = loadSession(false);
             if (sessionState) {
               const cf = sessionState.completedFrames || {};
@@ -3294,8 +3563,8 @@
               saveSession({
                 completedFrames: cf,
                 activePromptId: null,
-                lastFrameRefImg: currentFrameRefImg,
-                canvasData: document.getElementById('spriteCanvas').toDataURL()
+                lastFrameRefImg: currentFrameRefImg
+                // canvasData intentionally omitted — restored by re-fetching filenames on resume
               });
             }
 
@@ -3327,11 +3596,22 @@
       document.getElementById('btnCancelAnim').style.display = 'none';
       cancelGenerationFlag = false;
       setTabActivity('spritegen', false);
-      // 💾 Clear session on completion so there's no stale recovery banner next time
       clearSession();
+      logTempUploadsOnComplete(); // fix #31: log temp files to console for manual cleanup reference
       if (!wasCancelled) {
         document.getElementById('downloadSheetBtn').style.display = 'block';
         document.getElementById('downloadZipBtn').style.display = 'block';
+      }
+    }
+
+    // fix #20: only log temp uploads, log total when complete
+    function logTempUploadsOnComplete() {
+      if (_tempUploads.length > 0) {
+        console.info(
+          `[ImageGen] Session complete. ${_tempUploads.length} temp files uploaded to ComfyUI /input:\n` +
+          _tempUploads.join('\n') +
+          '\nThese can be safely deleted from your ComfyUI input folder.'
+        );
       }
     }
 
@@ -3539,14 +3819,14 @@
           );
 
 
-          const res = await fetch(`http://${COMFY_API}/prompt`, {
+          const res = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
           });
           if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
           const { prompt_id } = await res.json();
           const filename = await pollHistory(prompt_id);
-          const imgUrl = `http://${COMFY_API}/view?filename=${filename}&type=output&t=${Date.now()}`;
+          const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
 
           await new Promise((resolve, reject) => {
             const img = new Image(); img.crossOrigin = 'Anonymous';
@@ -3659,7 +3939,7 @@
           { name: spriteModel.name, type: spriteModel.type, steps, cfg, denoise }
         );
 
-        const qRes = await fetch(`http://${COMFY_API}/prompt`, {
+        const qRes = await fetch(`http://${COMFY_API_LIVE}/prompt`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: workflowData, client_id: CLIENT_ID })
         });
@@ -3667,7 +3947,7 @@
         const { prompt_id } = await qRes.json();
 
         const outFilename = await pollHistory(prompt_id);
-        const imgUrl = `http://${COMFY_API}/view?filename=${outFilename}&type=output`;
+        const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${outFilename}&type=output`;
 
         await new Promise((resolve, reject) => {
           const img = new Image();
@@ -3697,6 +3977,7 @@
     //  STARTUP: check for any interrupted session on page load
     // ============================================================
     document.addEventListener('DOMContentLoaded', () => {
+      loadSettings(); // fix #6: apply persisted ComfyUI/TrafficCop addresses on startup
       checkForRecovery();
     });
     // Also check immediately in case DOMContentLoaded already fired
