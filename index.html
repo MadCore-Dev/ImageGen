@@ -32,12 +32,20 @@
         <label>ComfyUI Output Folder</label>
         <div style="display:flex; gap:8px; align-items:center;">
           <input type="text" id="settingOutputPath" placeholder="/Users/yourname/.ComfyUI/output" style="flex:1;">
-          <button id="btnCopyOutputPath" class="copy-pill-btn" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:4px; padding:6px 10px; font-size:10px; color:var(--text-muted); cursor:pointer; min-width: 60px;">
+          <button id="btnCopyOutputPath" class="copy-pill-btn"
+            style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:4px; padding:6px 10px; font-size:10px; color:var(--text-muted); cursor:pointer; min-width: 60px;">
             <span id="copyOutputLabel">📋 Copy</span>
           </button>
         </div>
         <div id="outputFolderPath" style="display:none;"></div>
         <div class="settings-hint">Where ComfyUI saves generated images/animations</div>
+      </div>
+      <div class="settings-row">
+        <button id="btnPurgeTemp"
+          style="width:100%; padding:8px; background:rgba(248,113,113,0.1); border:1px solid var(--error); border-radius:6px; color:var(--error); font-size:12px; cursor:pointer;">🗑️
+          Purge ComfyUI Temp Inputs</button>
+        <div class="settings-hint">Deletes intermediate frame files from the ComfyUI input directory via Traffic Cop.
+        </div>
       </div>
       <button id="btnSaveSettings" class="btn-settings-save">Save &amp; Apply</button>
     </div>
@@ -56,6 +64,9 @@
           style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--text-muted); cursor:pointer;">
           ⚙️ Settings
         </button>
+        <button id="btnFreeVram"
+          style="background:rgba(255,255,255,0.05); border:1px solid var(--warning); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--warning); cursor:pointer;">🧹
+          Free VRAM</button>
         <!-- fix #28: theme toggle -->
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
           🌙
@@ -483,6 +494,9 @@
           <button class="btn-download" id="btnReorderFrames"
             style="flex:1; display:none; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px;"
             aria-label="Reorder frames by dragging">↕ Reorder Frames</button>
+          <button class="btn-download" id="btnUndoReorder" aria-label="Undo last frame reorder"
+            style="flex:1; display:none; background:rgba(251,191,36,0.1); border:1px solid var(--warning); color:var(--warning); font-size:12px;">↩️
+            Undo</button>
           <!-- fix #21: session export/import for backup & portability -->
           <button class="btn-download" id="exportSessionBtn" aria-label="Export current session config as JSON"
             style="flex:1; display:none; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-muted); font-size:12px;">📤

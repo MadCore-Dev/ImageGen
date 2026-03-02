@@ -20,7 +20,7 @@ import { checkComfyStatus, initWebSocket, pollHistory } from './api.js';
 import { buildWorkflow } from './workflows.js';
 import { checkForRecovery, saveTabState, loadTabState, initUniversalSessionRecovery, resumeSession, dismissSession, exportSessionJSON, importSessionJSON } from './session.js';
 import { initCanvasEventListeners, downloadSpriteSheet, downloadFramesZip, closeCellPreview, updatePreviewFps, retryActiveCell, copyFrameToClipboard, exportActiveAnimationGif } from './canvas.js';
-import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue, generateSpriteRef, handleCustomUpload, approveReference, startAnimationQueue, cancelAnimationQueue, applyFrameReorder, hideFrameReorder, showFrameReorder, setSpriteSize } from './sprite_engine.js';
+import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue, generateSpriteRef, handleCustomUpload, approveReference, startAnimationQueue, cancelAnimationQueue, applyFrameReorder, hideFrameReorder, showFrameReorder, setSpriteSize, undoFrameReorder } from './sprite_engine.js';
 import { startVideoGen, cancelVideoGen, selectVideoModel, initVideoModelChips } from './video_engine.js';
 import { setVideoImgWidth, setVideoImgHeight, setActivePromptIds } from './config.js';
 
@@ -697,6 +697,33 @@ export function initEventListeners() {
     if (el_btnCopyFrame) el_btnCopyFrame.addEventListener('click', () => copyFrameToClipboard());
     const el_btnDownloadGif = document.getElementById('btnDownloadGif');
     if (el_btnDownloadGif) el_btnDownloadGif.addEventListener('click', () => exportActiveAnimationGif());
+
+    // Task 1: VRAM Management Button
+    const el_btnFreeVram = document.getElementById('btnFreeVram');
+    if (el_btnFreeVram) el_btnFreeVram.addEventListener('click', async () => {
+        try {
+            await fetch(`http://${COMFY_API_LIVE}/free`, { method: 'POST', body: JSON.stringify({ unload_models: true, free_memory: true }) });
+            setStatus('VRAM cleared successfully!', 'success');
+        } catch (e) { setStatus('Failed to clear VRAM', 'error'); }
+    });
+
+    // Task 2: Purge Temp Files Button
+    const el_btnPurgeTemp = document.getElementById('btnPurgeTemp');
+    if (el_btnPurgeTemp) el_btnPurgeTemp.addEventListener('click', async () => {
+        try {
+            el_btnPurgeTemp.textContent = '⏳ Purging...';
+            await fetch(`${TRAFFIC_COP_LIVE}/comfyui/clean_input`, { method: 'POST' });
+            el_btnPurgeTemp.textContent = '✅ Purged!';
+            setTimeout(() => el_btnPurgeTemp.textContent = '🗑️ Purge ComfyUI Temp Inputs', 2000);
+        } catch (e) {
+            alert('Failed to purge. Ensure Traffic Cop supports /comfyui/clean_input.');
+            el_btnPurgeTemp.textContent = '🗑️ Purge ComfyUI Temp Inputs';
+        }
+    });
+
+    // Task 4: Undo Reorder System
+    const el_btnUndoReorder = document.getElementById('btnUndoReorder');
+    if (el_btnUndoReorder) el_btnUndoReorder.addEventListener('click', () => undoFrameReorder());
 }
 
 // Ensure initEventListeners is available for any dynamic invocations if needed, though initApp() handles it.

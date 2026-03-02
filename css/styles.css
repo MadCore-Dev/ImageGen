@@ -1260,7 +1260,9 @@ details.adv-panel .adv-body {
     ============================================================ */
 @media (max-width: 600px) {
   .controls-grid {
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .app-wrapper {

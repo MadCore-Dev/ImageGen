@@ -758,6 +758,7 @@ export async function resumeAnimationQueue({ s, rowStatuses }) {
 let _reorderList = [];
 let _reorderAnimId = '';
 let _dragSrcIdx = null;
+let _backupReorderState = null;
 
 export function showFrameReorder() {
     const session = loadSession(false);
@@ -833,6 +834,7 @@ function buildThumbRow(animId) {
 export function applyFrameReorder() {
     const session = loadSession(false);
     if (!session) return;
+    _backupReorderState = JSON.parse(JSON.stringify(session.completedFrames)); document.getElementById('btnUndoReorder').style.display = 'block';
     session.completedFrames[_reorderAnimId] = _reorderList;
     saveSession(session);
 
@@ -873,4 +875,15 @@ function logTempUploadsOnComplete() {
             '\nThese can be safely deleted from your ComfyUI input folder.'
         );
     }
+}
+
+export function undoFrameReorder() {
+    if (!_backupReorderState) return;
+    const session = loadSession(false);
+    if (!session) return;
+    session.completedFrames = JSON.parse(JSON.stringify(_backupReorderState));
+    saveSession(session);
+    _backupReorderState = null;
+    document.getElementById('btnUndoReorder').style.display = 'none';
+    setSpriteStatus('↩️ Reorder undone. Please refresh or reload session to see changes.', 'success');
 }
