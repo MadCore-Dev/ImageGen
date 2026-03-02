@@ -4,7 +4,7 @@ import {
     OUTPUT_PATH_LIVE, setOutputPathLive,
     CLIENT_ID, wsRetries, setWsRetries, socket,
     lastSeed, setLastSeed,
-    lastFilename, setLastFilename, selectedModel,
+    lastFilename, setLastFilename, selectedModel, setSelectedModel,
     imgWidth, setImgWidth,
     imgHeight, setImgHeight,
     activeStyleKw,
@@ -429,6 +429,13 @@ export function setVideoRes(w, h, btn) {
     btn.classList.add('active');
 }
 
+const MODEL_OPTIMAL_PARAMS = {
+    gguf: { steps: 4, cfg: 1.0, maxSteps: 8, maxCfg: 3.0 },
+    sdxl_lightning: { steps: 6, cfg: 2.0, maxSteps: 10, maxCfg: 5.0 },
+    sdxl: { steps: 25, cfg: 6.0, maxSteps: 40, maxCfg: 12.0 },
+    sd15: { steps: 20, cfg: 7.0, maxSteps: 40, maxCfg: 15.0 }
+};
+
 export function selectModel(chip) {
     document.querySelectorAll('.model-chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
@@ -440,19 +447,15 @@ export function selectModel(chip) {
     const stepsSlider = document.getElementById('stepsSlider');
     const cfgSlider = document.getElementById('cfgSlider');
 
-    if (type === 'gguf') {
-        stepsSlider.value = 4; document.getElementById('stepsVal').textContent = '4';
-        cfgSlider.value = 1; document.getElementById('cfgVal').textContent = '1.0';
-    } else if (type === 'sdxl_lightning') {
-        stepsSlider.value = 6; document.getElementById('stepsVal').textContent = '6';
-        cfgSlider.value = 2; document.getElementById('cfgVal').textContent = '2.0';
-    } else if (type === 'sdxl') {
-        stepsSlider.value = 25; document.getElementById('stepsVal').textContent = '25';
-        cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
-    } else {
-        stepsSlider.value = 20; document.getElementById('stepsVal').textContent = '20';
-        cfgSlider.value = 7; document.getElementById('cfgVal').textContent = '7.0';
-    }
+    const params = MODEL_OPTIMAL_PARAMS[type] || MODEL_OPTIMAL_PARAMS.sd15;
+
+    stepsSlider.max = params.maxSteps;
+    stepsSlider.value = params.steps;
+    document.getElementById('stepsVal').textContent = params.steps.toString();
+
+    cfgSlider.max = params.maxCfg;
+    cfgSlider.value = params.cfg;
+    document.getElementById('cfgVal').textContent = params.cfg.toFixed(1);
 }
 
 export function randomizeSeed() {

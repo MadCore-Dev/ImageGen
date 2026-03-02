@@ -245,6 +245,8 @@ export function updateImageMeta() {
 }
 
 // --- Styles Management ---
+import { selectModel } from './app.js';
+
 export function selectStyle(chip) {
     document.querySelectorAll('.style-chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');

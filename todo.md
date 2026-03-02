@@ -1,89 +1,34 @@
-# 🚀 Project Epoch: ImageGen Bug Fix & Audit Status (March 2, 2026)
+Act as a senior frontend developer. I am building a local AI Image Generation UI connecting to ComfyUI. I need you to rewrite my `selectStyle()` and `selectModel()` JavaScript functions to automatically lock in the fastest, highest-quality generation settings. 
 
-This document tracks the resolution of the fresh audit performed on the ImageGen project.
+When a user clicks a "Style" chip, it should automatically select the mapped model. 
+When a model is selected, it must automatically snap the Steps and CFG sliders to the EXACT optimal values below, and dynamically update the `max` properties of the sliders so the user cannot accidentally over-bake the image (which causes 2-hour wait times).
 
-## 🚨 CRITICAL BUG FIXES (EXECUTE EXACTLY AS WRITTEN)
+Here are the strict rules and fixed values you must implement:
 
-**Task 1: Fix AnimateDiff Topology Bug (Fake Video)**
-- **File:** `js/workflows.js`
-- **Action:** Inside the `buildAnimateDiffWorkflow` function, scroll down to the LoRA injection block at the bottom (around line 214).
-- **Change:** Find the line `flow['7'].inputs.model = [modelNode, 0];`. Change the `'7'` to a `'2'`. 
-  *It should exactly read:* `flow['2'].inputs.model = [modelNode, 0];`
-  *(Note: This correctly routes the LoRA through the AnimateDiff motion module instead of bypassing it).*
+### TABLE 1: Model Optimal Parameters (Fastest + Best Quality)
+| Model Architecture (data-type) | Example Models | Fixed Steps | Fixed CFG | Slider Max Steps | Slider Max CFG |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **gguf** (FLUX Schnell) | `flux` | **4** | **1.0** | 8 | 3.0 |
+| **sdxl_lightning** (Distilled) | `DreamShaperXL_Lightning.safetensors` | **6** | **2.0** | 10 | 5.0 |
+| **sdxl** (Standard XL) | `Juggernaut-XL_v9.safetensors`, `ponyDiffusionV6XL.safetensors` | **25** | **6.0** | 40 | 12.0 |
+| **sd15** (Standard 1.5) | `AnyLoRA_noVae_fp16-pruned.safetensors`, `DreamShaper_8_pruned.safetensors` | **20** | **7.0** | 40 | 15.0 |
 
-**Task 2: Fix Modal Preview Interval Leak**
-- **File:** `js/canvas.js`
-- **Action:** Inside `initCanvasEventListeners()`, locate the `document.getElementById('spriteCanvas')?.addEventListener('click', (e) => { ... })` block.
-- **Change:** Right below `const animId = currentAnimationGrid[row];` add the following exact code to clear any ghost intervals before opening a new cell:
-  ```javascript
-  if (animationPreviewInterval) {
-      clearInterval(animationPreviewInterval);
-      animationPreviewInterval = null;
-  }
+### TABLE 2: Style to Model Mapping
+| Style ID | Target Model to Auto-Select |
+| :--- | :--- |
+| `photorealistic` | `Juggernaut-XL_v9.safetensors` |
+| `portrait` | `Juggernaut-XL_v9.safetensors` |
+| `anime` | `ponyDiffusionV6XL.safetensors` |
+| `pixel` | `flux` |
+| `cartoon` | `DreamShaper_8_pruned.safetensors` |
+| `fantasy` | `AnyLoRA_noVae_fp16-pruned.safetensors` |
+| `scifi` | `DreamShaperXL_Lightning.safetensors` |
+| `3d` | `DreamShaperXL_Lightning.safetensors` |
+| `nsfw` | `ponyDiffusionV6XL.safetensors` |
 
-```
-
-**Task 3: Fix Ghost Canvas Click Bounds (Slider Desync)**
-
-* **File:** `js/canvas.js`
-* **Action:** Inside `initCanvasEventListeners()`, locate this line inside the canvas click event: `const framesCount = parseInt(document.getElementById('frameCountSlider').value, 10) || 8;`
-* **Change:** Replace that single line with these two lines so it reads the true mathematical length of the row from the session:
-```javascript
-const session = loadSession(false);
-const framesCount = session?.completedFrames?.[currentAnimationGrid[row]]?.length || parseInt(document.getElementById('frameCountSlider').value, 10) || 8;
-
-```
-
-
-
-**Task 4: Fix Single-Row Retry UI Glitch**
-
-* **File:** `js/canvas.js`
-* **Action 1:** Inside `retryAnimationRow()`, immediately after `_cancelRetryFlag = false;`, add this line:
-`document.querySelectorAll('.timeline-btn').forEach(b => b.disabled = true);`
-* **Action 2:** At the very end of `retryAnimationRow()`, immediately before the closing bracket `}`, add this line:
-`document.querySelectorAll('.timeline-btn').forEach(b => b.disabled = false);`
-
-**Task 5: Fix Double-Fetch Network Penalty**
-
-* **File:** `js/sprite_engine.js`
-* **Action:** Inside `startAnimationQueue()`, locate the block in the loop starting with `await new Promise((resolve, reject) => { ... img.src = imgUrl; });` and ending with `let newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();` (around lines 338-350).
-* **Change:** Replace that entire sequential block with this network-optimized version (fetching the blob *first*, then drawing it):
-```javascript
-const newlyGeneratedBlobRes = await fetch(imgUrl);
-let newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
-const blobUrl = URL.createObjectURL(newlyGeneratedBlob);
-
-await new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-        canvasCtx.imageSmoothingEnabled = false;
-        canvasCtx.drawImage(img, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize);
-        URL.revokeObjectURL(blobUrl);
-        resolve();
-    };
-    img.onerror = reject;
-    img.src = blobUrl;
-});
-
-```
-
-
-
-**Task 6: Fix Dangling Drag State**
-
-* **File:** `js/sprite_engine.js`
-* **Action:** Inside `buildThumbRow()`, find the dragend listener: `wrap.addEventListener('dragend', () => { wrap.style.opacity = ''; });`
-* **Change:** Add `_dragSrcIdx = null;` so it exactly reads:
-`wrap.addEventListener('dragend', () => { wrap.style.opacity = ''; _dragSrcIdx = null; });`
-
-**Task 7: Fix Loop Runaway on Global API Error**
-
-* **File:** `js/sprite_engine.js`
-* **Action:** Inside `startAnimationQueue()`, find the end of the inner frame loop `for (let c = 0; c < framesCount; c++) { ... }`. Immediately *after* that inner loop closes, but *inside* the outer `for (let r = 0...)` loop.
-* **Change:** Add this break statement to ensure the outer row loop also stops if an error triggered a global cancel:
-```javascript
-if (cancelGenerationFlag) break;
-
-```
-
+### Requirements for the JS Code:
+1. Write the Javascript logic to map these arrays/objects cleanly.
+2. In `selectStyle(chip)`, after setting the active style, programmatically trigger `selectModel()` for the mapped target model.
+3. In `selectModel(chip)`, update the DOM elements `stepsSlider` and `cfgSlider` with the `value` AND `max` properties from Table 1 based on the `chip.dataset.type`. 
+4. Update the visual text displays (`stepsVal` and `cfgVal`) to match the newly snapped slider values.
+5. Provide the complete code for these two functions so I can drop them into my UI script.
