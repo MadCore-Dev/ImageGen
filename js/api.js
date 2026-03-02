@@ -117,10 +117,17 @@ export async function pollHistory(prompt_id, signal = null) {
             throw new Error('ComfyUI generation timed out (60 mins).');
         }
 
-        const res = await fetch(`http://${COMFY_API_LIVE}/history/${prompt_id}`);
-        const history = await res.json();
+        let history = null;
+        try {
+            const res = await fetch(`http://${COMFY_API_LIVE}/history/${prompt_id}`);
+            history = await res.json();
+        } catch (err) {
+            console.warn("pollHistory fetch error:", err);
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+        }
 
-        if (history[prompt_id]) {
+        if (history && history[prompt_id]) {
             const entry = history[prompt_id];
             if (entry?.error) throw new Error(`ComfyUI job failed: ${JSON.stringify(entry.error)}`);
             if (entry?.status?.completed === true && !entry.outputs) {

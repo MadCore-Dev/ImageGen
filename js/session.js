@@ -175,14 +175,30 @@ export async function resumeSession() {
     setCanvasCtx(newCtx);
     newCtx.imageSmoothingEnabled = false; // crisp pixel-art scaling
 
-    if (s.canvasData) {
-        await new Promise(resolve => {
-            const img = new Image();
-            img.onload = () => { newCtx.drawImage(img, 0, 0); resolve(); };
-            img.onerror = resolve;
-            img.src = s.canvasData;
+    const loadPromises = [];
+    (s.selectedAnimations || []).forEach((animId, rowIndex) => {
+        const frames = s.completedFrames?.[animId] || [];
+        frames.forEach((fileData, colIndex) => {
+            if (!fileData) return;
+            const subQ = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+            const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subQ}&type=output`;
+
+            const p = new Promise(resolve => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    newCtx.drawImage(img, colIndex * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+                    resolve();
+                };
+                img.onerror = resolve;
+                img.src = imgUrl;
+            });
+            loadPromises.push(p);
         });
-    }
+    });
+
+    // We await all frames painting to prevent rendering tearing
+    await Promise.all(loadPromises);
 
     // --- 3. Rebuild timeline rows ---
     document.getElementById('stage3Progress').style.display = 'block';
@@ -282,7 +298,7 @@ export async function resumeSession() {
                 const blobRes = await fetch(imgUrl);
                 const blob = await blobRes.blob();
                 currentFrameRefImg = await uploadImageToComfy(blob, `recur_resume_${activeAnimId}_${startFrameIndex}.png`);
-                saveSession({ completedFrames: updatedFrames, activePromptId: null, canvasData: canvas.toDataURL() });
+                saveSession({ completedFrames: updatedFrames, activePromptId: null });
 
                 if (rowStatuses[activeAnimId]) {
                     const doneNow = updatedFrames[activeAnimId].filter(Boolean).length;

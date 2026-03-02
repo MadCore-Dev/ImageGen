@@ -55,11 +55,35 @@ export async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
         flow["6"].inputs.cfg = cfg;
 
         // fix #23: inject LoRA loader for GGUF
+        // fix #23: inject dynamic multiple LoRA loaders for GGUF
         if (loraName) {
-            flow["20"] = { "class_type": "LoraLoader", "inputs": { "lora_name": loraName, "strength_model": 1.0, "strength_clip": 1.0, "model": ["1", 0], "clip": ["2", 0] } };
-            flow["6"].inputs.model = ["20", 0];
-            flow["4"].inputs.clip = ["20", 1];
-            flow["9"].inputs.clip = ["20", 1];
+            const loras = loraName.split(',').map(n => n.trim()).filter(Boolean);
+            if (loras.length > 0) {
+                let currentModelNode = "1";
+                let currentClipNode = "2";
+                let loraIdPrefix = 20;
+
+                loras.forEach(lora => {
+                    const loraId = loraIdPrefix.toString();
+                    flow[loraId] = {
+                        "class_type": "LoraLoader",
+                        "inputs": {
+                            "lora_name": lora,
+                            "strength_model": 1.0,
+                            "strength_clip": 1.0,
+                            "model": [currentModelNode, 0],
+                            "clip": [currentClipNode, currentClipNode === "2" ? 0 : 1]
+                        }
+                    };
+                    currentModelNode = loraId;
+                    currentClipNode = loraId;
+                    loraIdPrefix++;
+                });
+
+                flow["6"].inputs.model = [currentModelNode, 0];
+                flow["4"].inputs.clip = [currentClipNode, 1];
+                flow["9"].inputs.clip = [currentClipNode, 1];
+            }
         }
         return flow;
     } else {
@@ -111,10 +135,33 @@ export async function buildImg2ImgWorkflow(refFilename, positivePrompt, negative
         flow["6"].inputs.denoise = denoise;
 
         if (loraName) {
-            flow["20"] = { "class_type": "LoraLoader", "inputs": { "lora_name": loraName, "strength_model": 1.0, "strength_clip": 1.0, "model": ["1", 0], "clip": ["2", 0] } };
-            flow["6"].inputs.model = ["20", 0];
-            flow["4"].inputs.clip = ["20", 1];
-            flow["9"].inputs.clip = ["20", 1];
+            const loras = loraName.split(',').map(n => n.trim()).filter(Boolean);
+            if (loras.length > 0) {
+                let currentModelNode = "1";
+                let currentClipNode = "2";
+                let loraIdPrefix = 20;
+
+                loras.forEach(lora => {
+                    const loraId = loraIdPrefix.toString();
+                    flow[loraId] = {
+                        "class_type": "LoraLoader",
+                        "inputs": {
+                            "lora_name": lora,
+                            "strength_model": 1.0,
+                            "strength_clip": 1.0,
+                            "model": [currentModelNode, 0],
+                            "clip": [currentClipNode, currentClipNode === "2" ? 0 : 1]
+                        }
+                    };
+                    currentModelNode = loraId;
+                    currentClipNode = loraId;
+                    loraIdPrefix++;
+                });
+
+                flow["6"].inputs.model = [currentModelNode, 0];
+                flow["4"].inputs.clip = [currentClipNode, 1];
+                flow["9"].inputs.clip = [currentClipNode, 1];
+            }
         }
         return flow;
     } else {
