@@ -696,20 +696,21 @@ export async function resumeAnimationQueue({ s, rowStatuses }) {
                 const filename = await pollHistory(data.prompt_id, abortSignal);
                 const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
 
+                const blobRes = await fetch(imgUrl);
+                const blob = await blobRes.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
                 await new Promise((resolve, reject) => {
                     const img = new Image();
-                    img.crossOrigin = 'Anonymous';
                     img.onload = () => {
-                        canvasCtx.imageSmoothingEnabled = false; // Fix: Prevent blurring during resume
+                        canvasCtx.imageSmoothingEnabled = false;
                         canvasCtx.drawImage(img, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+                        URL.revokeObjectURL(blobUrl);
                         resolve();
                     };
                     img.onerror = reject;
-                    img.src = imgUrl;
+                    img.src = blobUrl;
                 });
-
-                const blobRes = await fetch(imgUrl);
-                const blob = await blobRes.blob();
                 currentFrameRefImg = await uploadImageToComfy(blob, `recur_resume_${animId}_${c}_${Date.now()}.png`);
                 _tempUploads.push(currentFrameRefImg);
 
