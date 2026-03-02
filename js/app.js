@@ -154,11 +154,14 @@ export function cancelGenerateImage() {
     // Also tell ComfyUI backend to halt the GPU process
     try {
         fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
-        fetch(`http://${COMFY_API_LIVE}/queue`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clear: true })
-        }).catch(() => { });
+        const ids = activePromptIds.main;
+        if (ids) {
+            fetch(`http://${COMFY_API_LIVE}/queue`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delete: [ids] })
+            }).catch(() => { });
+        }
     } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
 }
 
@@ -288,54 +291,58 @@ let generateImage = async function () {
     if (n === 1) { return _originalGenerateImage(signal, false); }
 
     const btn = document.getElementById('generateBtn');
-    btn.disabled = true;
-    btn.textContent = `⏳ Batch 0/${n}…`;
-
-    const grid = document.getElementById('batchGrid');
-    grid.innerHTML = '';
-    grid.style.display = 'grid';
-
-    const cards = Array.from({ length: n }, (_, i) => {
-        const card = document.createElement('div');
-        card.className = 'batch-item';
-        card.innerHTML = `<div style="color:var(--text-dim);font-size:12px;">⏳ ${i + 1}/${n}</div>`;
-        grid.appendChild(card);
-        return card;
-    });
-
     const cancelBtn = document.getElementById('cancelBtn');
-    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
 
-    for (let i = 0; i < n; i++) {
-        if (signal.aborted) break;
-        btn.textContent = `⏳ Batch ${i + 1}/${n}…`;
-        try {
-            await _originalGenerateImage(signal, true);
-            const src = document.getElementById('resultImage').src;
-            if (src) {
-                const dlBtn = document.createElement('button');
-                dlBtn.className = 'batch-dl';
-                dlBtn.setAttribute('aria-label', `Download batch image ${i + 1}`);
-                dlBtn.textContent = '⬇';
-                dlBtn.addEventListener('click', () => downloadBatchImage(src, i + 1));
-                const img = document.createElement('img');
-                img.src = src;
-                img.alt = `Batch image ${i + 1}`;
-                cards[i].innerHTML = '';
-                cards[i].appendChild(img);
-                cards[i].appendChild(dlBtn);
+    try {
+        btn.disabled = true;
+        btn.textContent = `⏳ Batch 0/${n}…`;
+
+        const grid = document.getElementById('batchGrid');
+        grid.innerHTML = '';
+        grid.style.display = 'grid';
+
+        const cards = Array.from({ length: n }, (_, i) => {
+            const card = document.createElement('div');
+            card.className = 'batch-item';
+            card.innerHTML = `<div style="color:var(--text-dim);font-size:12px;">⏳ ${i + 1}/${n}</div>`;
+            grid.appendChild(card);
+            return card;
+        });
+
+        if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+
+        for (let i = 0; i < n; i++) {
+            if (signal.aborted) break;
+            btn.textContent = `⏳ Batch ${i + 1}/${n}…`;
+            try {
+                await _originalGenerateImage(signal, true);
+                const src = document.getElementById('resultImage').src;
+                if (src) {
+                    const dlBtn = document.createElement('button');
+                    dlBtn.className = 'batch-dl';
+                    dlBtn.setAttribute('aria-label', `Download batch image ${i + 1}`);
+                    dlBtn.textContent = '⬇';
+                    dlBtn.addEventListener('click', () => downloadBatchImage(src, i + 1));
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = `Batch image ${i + 1}`;
+                    cards[i].innerHTML = '';
+                    cards[i].appendChild(img);
+                    cards[i].appendChild(dlBtn);
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') break;
+                cards[i].innerHTML = `<div style="color:var(--error);font-size:11px;padding:8px;">❌ ${e.message}</div>`;
             }
-        } catch (e) {
-            if (e.name === 'AbortError') break;
-            cards[i].innerHTML = `<div style="color:var(--error);font-size:11px;padding:8px;">❌ ${e.message}</div>`;
         }
+    } finally {
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        _tab1AbortController = null;
+        btn.disabled = false;
+        btn.textContent = signal.aborted ? '✦ Generate Image' : `✦ Generate ${n} Images`;
+        setTabActivity('imagegen', false);
+        if (!signal.aborted) setStatus(`✅ Batch of ${n} complete!`, 'success');
     }
-
-    if (cancelBtn) cancelBtn.style.display = 'none';
-    _tab1AbortController = null;
-    btn.disabled = false;
-    btn.textContent = signal.aborted ? '✦ Generate Image' : `✦ Generate ${n} Images`;
-    if (!signal.aborted) setStatus(`✅ Batch of ${n} complete!`, 'success');
 };
 
 
@@ -502,14 +509,14 @@ if (document.readyState !== 'loading') {
 //  EVENT LISTENERS BINDING
 // ============================================================
 export function initEventListeners() {
-    const el_autoGenId_1 = document.getElementById('autoGenId_1');
-    if (el_autoGenId_1) el_autoGenId_1.addEventListener('click', (e) => { closeSettings() });
-    const el_autoGenId_2 = document.getElementById('autoGenId_2');
-    if (el_autoGenId_2) el_autoGenId_2.addEventListener('click', (e) => { saveSettings() });
-    const el_autoGenId_3 = document.getElementById('autoGenId_3');
-    if (el_autoGenId_3) el_autoGenId_3.addEventListener('click', (e) => { copyOutputPath() });
-    const el_autoGenId_4 = document.getElementById('autoGenId_4');
-    if (el_autoGenId_4) el_autoGenId_4.addEventListener('click', (e) => { openSettings() });
+    const el_btnCloseSettings = document.getElementById('btnCloseSettings');
+    if (el_btnCloseSettings) el_btnCloseSettings.addEventListener('click', () => closeSettings());
+    const el_btnSaveSettings = document.getElementById('btnSaveSettings');
+    if (el_btnSaveSettings) el_btnSaveSettings.addEventListener('click', () => saveSettings());
+    const el_btnCopyOutputPath = document.getElementById('btnCopyOutputPath');
+    if (el_btnCopyOutputPath) el_btnCopyOutputPath.addEventListener('click', () => copyOutputPath());
+    const el_btnOpenSettings = document.getElementById('btnOpenSettings');
+    if (el_btnOpenSettings) el_btnOpenSettings.addEventListener('click', () => openSettings());
     const el_themeToggle = document.getElementById('themeToggle');
     if (el_themeToggle) el_themeToggle.addEventListener('click', (e) => { toggleTheme() });
     const el_btnTabImagegen = document.getElementById('btnTabImagegen');

@@ -30,7 +30,13 @@
       </div>
       <div class="settings-row">
         <label>ComfyUI Output Folder</label>
-        <input type="text" id="settingOutputPath" placeholder="/Users/yourname/.ComfyUI/output">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="settingOutputPath" placeholder="/Users/yourname/.ComfyUI/output" style="flex:1;">
+          <button id="btnCopyOutputPath" class="copy-pill-btn" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:4px; padding:6px 10px; font-size:10px; color:var(--text-muted); cursor:pointer; min-width: 60px;">
+            <span id="copyOutputLabel">📋 Copy</span>
+          </button>
+        </div>
+        <div id="outputFolderPath" style="display:none;"></div>
         <div class="settings-hint">Where ComfyUI saves generated images/animations</div>
       </div>
       <button id="btnSaveSettings" class="btn-settings-save">Save &amp; Apply</button>

@@ -86,7 +86,13 @@ export async function generateSpriteRef() {
 
         setSpriteStatus('🚦 Waking up ComfyUI…', 'active');
         document.getElementById('btnGenRef').textContent = '🚦 Waking up ComfyUI…';
-        const copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, { method: 'POST' });
+        let copRes;
+        try {
+            copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, { method: 'POST' });
+        } catch (fetchErr) {
+            console.error('Traffic Cop connection failed:', fetchErr);
+            throw new Error(`Traffic Cop at ${TRAFFIC_COP_LIVE} is unreachable. Is the service running on port 5050?`);
+        }
         const copData = await copRes.json();
         if (copData.status !== 'success') {
             throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);
@@ -169,6 +175,7 @@ export async function handleCustomUpload(event) {
         console.error(err);
         setSpriteStatus('Failed to load custom image', 'error');
         showSpriteProgress(false);
+        document.getElementById('spriteLoaderWrap')?.classList.remove('visible');
     }
 }
 
@@ -345,11 +352,14 @@ export function cancelAnimationQueue() {
     // Also tell ComfyUI backend to halt the GPU process
     try {
         fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
-        fetch(`http://${COMFY_API_LIVE}/queue`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clear: true })
-        }).catch(() => { });
+        const ids = activePromptIds.sprite;
+        if (ids) {
+            fetch(`http://${COMFY_API_LIVE}/queue`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delete: [ids] })
+            }).catch(() => { });
+        }
     } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
 
     setSpriteStatus('⛔ Cancelling…', 'error');
@@ -688,6 +698,7 @@ export async function resumeAnimationQueue({ s, rowStatuses }) {
                     const img = new Image();
                     img.crossOrigin = 'Anonymous';
                     img.onload = () => {
+                        canvasCtx.imageSmoothingEnabled = false; // Fix: Prevent blurring during resume
                         canvasCtx.drawImage(img, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize);
                         resolve();
                     };
@@ -836,6 +847,7 @@ export function applyFrameReorder() {
         if (!filename) return;
         const img = new Image();
         img.onload = () => {
+            ctx.imageSmoothingEnabled = false;
             ctx.clearRect(col * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
             ctx.drawImage(img, col * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
         };

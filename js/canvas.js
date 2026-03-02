@@ -312,7 +312,7 @@ export function exportActiveAnimationGif() {
         const gif = new GIF({
             workers: 2,
             quality: 10,
-            workerScript: 'gif.worker.js',
+            workerScript: 'vendor/gif.worker.js',
             width: activeSpriteSize,
             height: activeSpriteSize,
             transparent: null
@@ -358,8 +358,18 @@ export async function retryActiveCell() {
     setProgress(0);
 
     try {
-        if (!baseRefBlob) throw new Error("Reference image lost. Generate a new reference first.");
-        const uploadName = await uploadImageToComfy(baseRefBlob, `sprite_ref_${Date.now()}.png`);
+        let frameRefBlob;
+        if (col > 0) {
+            // Sequence retry: Use previous frame as reference, upscaled to avoid SDXL crash
+            frameRefBlob = await cropAndUpscaleCell(row, col - 1, activeSpriteSize, 768);
+        } else {
+            // First frame retry: Use base reference, upscaled
+            if (!baseRefBlob) throw new Error("Reference image lost. Generate a new reference first.");
+            frameRefBlob = await upscaleImageBlob(baseRefBlob, 768);
+        }
+
+        if (!frameRefBlob) throw new Error("Failed to prepare reference for retry.");
+        const uploadName = await uploadImageToComfy(frameRefBlob, `sprite_retry_ref_${Date.now()}.png`);
 
         const preset = ANIMATION_PRESETS.find(p => p.id === animId);
         const userPrompt = document.getElementById('spritePrompt').value.trim();
@@ -405,6 +415,7 @@ export async function retryActiveCell() {
             img.onload = () => {
                 const canvas = document.getElementById('spriteCanvas');
                 const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = false; // Fix: Prevent blurring on single frame retry
                 ctx.clearRect(col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
                 ctx.drawImage(img, 0, 0, activeSpriteSize, activeSpriteSize, col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
                 resolve();
@@ -446,6 +457,19 @@ export async function retryActiveCell() {
         showSpriteProgress(false);
     }
 }
+/** Helper to crop a cell from canvas and upscale it to targetSize (Nearest Neighbor) */
+export async function cropAndUpscaleCell(row, col, cellSize, targetSize = 768) {
+    const canvas = document.getElementById('spriteCanvas');
+    if (!canvas) return null;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = targetSize;
+    tempCanvas.height = targetSize;
+    const tCtx = tempCanvas.getContext('2d');
+    tCtx.imageSmoothingEnabled = false; // Nearest-neighbor!
+    tCtx.drawImage(canvas, col * cellSize, row * cellSize, cellSize, cellSize, 0, 0, targetSize, targetSize);
+    return new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+}
+
 // Utility for upscaling (Nearest-Neighbor)
 async function upscaleImageBlob(blob, minSide) {
     return new Promise((resolve, reject) => {

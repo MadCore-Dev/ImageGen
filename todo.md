@@ -1,33 +1,37 @@
-# ImageGen Codebase Audit - To-Do List
+# 🚀 Project Epoch: ImageGen Bug Fix & Audit Status (March 2, 2026)
 
-## 🚨 1. Critical Blockers & State Freezes
-- [x] Fix Broken Loader Wrap State (UI Freeze) in `js/sprite_engine.js` (change `.active` to `.visible`)
-- [x] Fix Hardcoded AnimateDiff Models in `js/video_engine.js` and `js/config.js`
+This document tracks the resolution of the comprehensive audit performed on the ImageGen project.
 
-## 🐛 2. Logic & State Management Bugs
-- [x] Fix Broken State on Single-Cell Retry in `js/canvas.js` (update `session.completedFrames` & chained reference image)
-- [x] Fix Row Retry Persistence Bug in `js/canvas.js` (call `saveSession()`)
-- [x] Fix LoRA Support Restriction in `js/workflows.js` (remove `type === 'gguf'` wrapper for LoraLoader)
-- [x] Fix Sprite Engine Model Fallback Flaw in `js/sprite_engine.js`
-- [x] Fix Cross-Pollution of Variables in `js/app.js` (Implemented `activePromptIds` routing in `api.js`)
+## ✅ RESOLVED / FIXED
 
-## 📉 3. Performance & Resource Risks
-- [x] Fix Canvas Squashing & img2img Sizing in `js/canvas.js` (nearest-neighbor interpolation `ctx.imageSmoothingEnabled = false;` & upscale img2img to 768x768)
-- [x] Fix Massive VRAM Bloat / Temp File Leak in `js/sprite_engine.js` (Optimized via recursion scaling)
-- [x] Fix Memory Leak via Object URLs in `js/canvas.js` (Added `URL.revokeObjectURL` cleanup)
+### 🖼️ 1. Rendering & Logic
+- [x] **Nearest Neighbor Enforced**: `imageSmoothingEnabled = false` is now applied to all critical `drawImage` calls in `canvas.js` and `sprite_engine.js` to prevent pixel-art blurring.
+- [x] **SDXL img2img Crash Fixed**: Implemented `cropAndUpscaleCell` in `canvas.js`. Retrying a frame now upscales the 64x64 reference to 768px (Nearest Neighbor) before uploading, respecting SDXL's resolution limits.
+- [x] **Sequence-Aware Retries**: Retrying a frame now correctly uses the *previous* frame in the sequence as a reference (or `baseRefBlob` if it's the first frame), maintaining visual continuity.
+- [x] **Custom Upload Fix**: `handleCustomUpload` now correctly clears the `.visible` class from the loader in both success and error states.
 
-## 🏗️ 4. Architectural & Systemic Smells
-- [x] Fix Global Variable Mutations in `js/config.js` (use set functions instead of direct mutation)
-- [x] Fix Brittle Polling Logic in `js/api.js` (avoid using UI button state to infer backend state)
-- [x] Fix Unreliable Clipboard Fallback in `js/ui.js` (executed `document.execCommand('copy')`)
-- [x] Fix XSS Risks via LocalStorage in `js/session.js` (use `textContent` instead of `innerHTML`)
+### 🚦 2. Network & Hardware
+- [x] **Traffic Cop Resilience**: Added `try/catch` wrappers for all `/comfyui/start` calls. Users now receive descriptive error messages if Traffic Cop (port 5050) or ComfyUI is unreachable.
+- [x] **Isolated Cancellation**: Fixed "Cross-Pollution" of aborts. Each tab now tracks its own `activePromptId`. Clicking "Cancel" now only `/interrupt`s the active job and `delete`s the specific queued prompts for that tab, rather than clearing the global queue.
 
-## 🎨 5. UI/UX & Quality of Life
-- [x] Graceful Degradation for Traffic Cop (handle fetch connection refused with a friendly UI note)
-- [x] Fix Ghost "Cancel" Button in `js/app.js`
-- [x] Fix CSS Class Typo in `css/styles.css` (remove inline opacity on `.btn-approve:disabled`)
-- [x] Fix Responsive Breakpoints in `css/styles.css` (add `minmax(100px, 1fr)`)
-- [x] Fix Empty State Shimmer Visibility in `css/styles.css` (adjust shimmer for low contrast)
+### 🐛 3. State & Persistence
+- [x] **LoRA Support (Tab 2 & 3)**: Fixed `workflows.js` to support LoRA injection for SDXL and SD1.5 models. Added LoRA support to the `AnimateDiff` workflow builder.
+- [x] **Settings Modal Restored**: Re-bound event listeners from `autoGenId_` placeholders to correct IDs (`btnOpenSettings`, `btnCloseSettings`, etc.). Restored missing HTML elements for "Copy Output Path".
+- [x] **Session Recovery Improvements**: Retrying a cell now correctly updates `session.completedFrames` and `lastFrameRefImg` to ensure the fix persists across refreshes.
 
-## ⚙️ 6. Local Network Testing & Scripts
-- [x] Fix Web Worker Pathing (Ensure `gif.worker.js` is served correctly)
+### 📉 4. Memory & Performance
+- [x] **Ghost Button Cleanup**: Added `finally` blocks to batch and single generation loops in `app.js` to ensure the "Cancel" button is hidden on completion/error.
+- [x] **GIF Worker Pathing**: Corrected `workerScript` path to `vendor/gif.worker.js`.
+- [x] **Blob URL Cleanup**: Added `URL.revokeObjectURL` to sequential generation loop to prevent memory leaks during long sessions.
+
+---
+
+## 🟡 PENDING / FUTURE IMPROVEMENTS
+
+- [ ] **Disk Bloat Cleanup**: The ComfyUI `/input` folder still accumulates transition frames. Need a server-side cleanup task or a "Purge Temp Files" button.
+- [ ] **VRAM Management**: Add a button to trigger ComfyUI's `/free` API to manually clear GPU memory.
+- [ ] **Mobile Responsive Pass**: Further refine the `.controls-grid` for ultra-narrow screens (e.g. iPhone SE).
+- [ ] **Undo/Redo System**: Persistence for manual frame reordering and deletions.
+
+---
+*Audit completed and addressed by Antigravity AI.*

@@ -90,9 +90,16 @@ export async function startVideoGen() {
 
     try {
         // 1. Wake ComfyUI via TrafficCop
-        const copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, {
-            method: 'POST', signal
-        });
+        let copRes;
+        try {
+            copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, {
+                method: 'POST', signal
+            });
+        } catch (fetchErr) {
+            if (fetchErr.name === 'AbortError') throw fetchErr;
+            console.error('Traffic Cop connection failed:', fetchErr);
+            throw new Error(`Traffic Cop at ${TRAFFIC_COP_LIVE} is unreachable. Is the service running on port 5050?`);
+        }
         const copData = await copRes.json();
         if (copData.status !== 'success') {
             throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);

@@ -235,6 +235,14 @@ export async function buildAnimateDiffWorkflow(positivePrompt, negativePrompt, o
     flow['10'].inputs.request_n_frames = frameCount;
     flow['10'].inputs.length = Math.min(frameCount, 16); // context window
 
+    const loraName = document.getElementById('loraInput')?.value.trim();
+    const { modelNode, clipNode } = injectLoras(flow, loraName, "1", "1");
+    if (modelNode !== "1") {
+        flow['7'].inputs.model = [modelNode, 0];
+        flow['4'].inputs.clip = [clipNode, 1];
+        flow['5'].inputs.clip = [clipNode, 1];
+    }
+
     return flow;
 }
 
