@@ -88,8 +88,14 @@ export function initCanvasEventListeners() {
 
         if (row >= currentAnimationGrid.length) return;
 
-        const framesCount = parseInt(document.getElementById('frameCountSlider').value, 10) || 8;
+        const session = loadSession(false);
+        const framesCount = session?.completedFrames?.[currentAnimationGrid[row]]?.length || parseInt(document.getElementById('frameCountSlider').value, 10) || 8;
         if (col >= framesCount) return;
+
+        if (animationPreviewInterval) {
+            clearInterval(animationPreviewInterval);
+            animationPreviewInterval = null;
+        }
 
         const animId = currentAnimationGrid[row];
         setActiveCell({ animId, frameIndex: col, row, col });
@@ -199,6 +205,7 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
     if (!preset || !canvasCtx || !baseRefUploadName) return;
 
     _cancelRetryFlag = false;
+    document.querySelectorAll('.timeline-btn').forEach(b => b.disabled = true);
     _retryAbortController = new AbortController();
     const signal = _retryAbortController.signal;
 
@@ -294,6 +301,7 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
         saveSession({ lastFrameRefImg: currentFrameRefImg });
     }
     if (cancelBtn) cancelBtn.style.display = 'none';
+    document.querySelectorAll('.timeline-btn').forEach(b => b.disabled = false);
 }
 
 export function exportActiveAnimationGif() {

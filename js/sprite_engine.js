@@ -534,20 +534,21 @@ export async function startAnimationQueue() {
                 const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
                 const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
 
+                const newlyGeneratedBlobRes = await fetch(imgUrl);
+                let newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
+                const blobUrl = URL.createObjectURL(newlyGeneratedBlob);
+
                 await new Promise((resolve, reject) => {
                     const img = new Image();
-                    img.crossOrigin = "Anonymous";
                     img.onload = () => {
-                        canvasCtx.imageSmoothingEnabled = false; // Nearest-neighbor upscale
+                        canvasCtx.imageSmoothingEnabled = false;
                         canvasCtx.drawImage(img, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+                        URL.revokeObjectURL(blobUrl);
                         resolve();
                     };
                     img.onerror = reject;
-                    img.src = imgUrl;
+                    img.src = blobUrl;
                 });
-
-                const newlyGeneratedBlobRes = await fetch(imgUrl);
-                let newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
 
                 // Category 3: SDXL Sizing Fix (Upscale for img2img recursion)
                 if (selectedModel.type === 'sdxl' || selectedModel.type === 'sdxl_lightning') {
@@ -585,6 +586,7 @@ export async function startAnimationQueue() {
                 setSpriteStatus(`Error on ${animId} frame ${c + 1}: ${err.message} — Continuing...`, 'error');
             }
         }
+        if (cancelGenerationFlag) break;
 
         status.playBtn.style.display = 'block';
         status.retryRowBtn.style.display = 'block';
@@ -813,7 +815,7 @@ function buildThumbRow(animId) {
             e.dataTransfer.effectAllowed = 'move';
             setTimeout(() => wrap.style.opacity = '0.35', 0);
         });
-        wrap.addEventListener('dragend', () => { wrap.style.opacity = ''; });
+        wrap.addEventListener('dragend', () => { wrap.style.opacity = ''; _dragSrcIdx = null; });
         wrap.addEventListener('dragover', e => { e.preventDefault(); wrap.querySelector('img').classList.add('drag-over'); });
         wrap.addEventListener('dragleave', () => wrap.querySelector('img').classList.remove('drag-over'));
         wrap.addEventListener('drop', e => {
