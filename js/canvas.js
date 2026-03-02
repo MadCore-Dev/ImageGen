@@ -162,11 +162,17 @@ export async function copyFrameToClipboard() {
     const btn = document.getElementById('btnCopyFrame');
     try {
         canvas.toBlob(async (blob) => {
-            await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob })
-            ]);
-            btn.innerText = '✅ Copied!';
-            setTimeout(() => { btn.innerText = '📋 Copy Frame to Clipboard'; }, 2000);
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                btn.innerText = '✅ Copied!';
+                setTimeout(() => { btn.innerText = '📋 Copy Frame to Clipboard'; }, 2000);
+            } catch (err) {
+                console.error(err);
+                btn.innerText = '❌ Copy Failed';
+                setTimeout(() => { btn.innerText = '📋 Copy Frame to Clipboard'; }, 2000);
+            }
         });
     } catch (e) {
         btn.innerText = '❌ Copy Failed';

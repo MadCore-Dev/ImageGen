@@ -18,7 +18,7 @@ import {
 } from './ui.js';
 import { checkComfyStatus, initWebSocket, pollHistory } from './api.js';
 import { buildWorkflow } from './workflows.js';
-import { checkForRecovery, saveTabState, initUniversalSessionRecovery } from './session.js';
+import { checkForRecovery, saveTabState, loadTabState, initUniversalSessionRecovery } from './session.js';
 import { initCanvasEventListeners } from './canvas.js';
 import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue } from './sprite_engine.js';
 import { startVideoGen, cancelVideoGen, selectVideoModel } from './video_engine.js';
@@ -66,6 +66,11 @@ export async function resumeTab1Generation(prompt_id) {
 
     try {
         initWebSocket();
+
+        const sessionState = loadTabState('tab1');
+        if (sessionState && sessionState.activeSeed !== undefined) {
+            setLastSeed(sessionState.activeSeed);
+        }
 
         const filename = await pollHistory(prompt_id, _tab1AbortController.signal);
         lastFilename = filename;
@@ -149,6 +154,7 @@ export function cancelGenerateImage() {
         fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
         fetch(`http://${COMFY_API_LIVE}/queue`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clear: true })
         }).catch(() => { });
     } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
@@ -213,7 +219,7 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
         }
         const { prompt_id } = await queueRes.json();
         setStatus(`⏳ In queue (${prompt_id.slice(0, 8)})… Node progress shown in bar above`, 'active');
-        saveTabState('tab1', { activePromptId: prompt_id });
+        saveTabState('tab1', { activePromptId: prompt_id, activeSeed: lastSeed });
 
         const filename = await pollHistory(prompt_id, signal);
         lastFilename = filename;

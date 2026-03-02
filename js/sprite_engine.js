@@ -343,6 +343,7 @@ export function cancelAnimationQueue() {
         fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
         fetch(`http://${COMFY_API_LIVE}/queue`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clear: true })
         }).catch(() => { });
     } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }

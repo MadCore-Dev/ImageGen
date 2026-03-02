@@ -26,6 +26,7 @@ export function cancelVideoGen() {
         fetch(`http://${COMFY_API_LIVE}/interrupt`, { method: 'POST' }).catch(() => { });
         fetch(`http://${COMFY_API_LIVE}/queue`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clear: true })
         }).catch(() => { });
     } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
@@ -201,7 +202,7 @@ export async function resumeVideoGen(prompt_id) {
     } finally {
         showVideoProgress(false);
         btn.disabled = false;
-        btn.textContent = '✦ Start Sequential Generation';
+        btn.textContent = '▶ Generate Animation';
         cancelBtn.style.display = 'none';
         setTabActivity('videogen', false);
     }
