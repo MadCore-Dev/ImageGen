@@ -243,8 +243,9 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
             });
             if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
             const { prompt_id } = await res.json();
-            const filename = await pollHistory(prompt_id, signal);
-            const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+            const fileData = await pollHistory(prompt_id, signal);
+            const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+            const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
 
             await new Promise((resolve, reject) => {
                 const img = new Image(); img.crossOrigin = 'Anonymous';
@@ -372,8 +373,9 @@ export async function retryActiveCell() {
         if (!qRes.ok) throw new Error('Failed to queue retry job.');
         const { prompt_id } = await qRes.json();
 
-        const outFilename = await pollHistory(prompt_id);
-        const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${outFilename}&type=output`;
+        const fileData = await pollHistory(prompt_id);
+        const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+        const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output`;
 
         await new Promise((resolve, reject) => {
             const img = new Image();

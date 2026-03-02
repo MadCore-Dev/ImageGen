@@ -18,10 +18,11 @@ import {
 } from './ui.js';
 import { checkComfyStatus, initWebSocket, pollHistory } from './api.js';
 import { buildWorkflow } from './workflows.js';
-import { checkForRecovery, saveTabState, loadTabState, initUniversalSessionRecovery } from './session.js';
-import { initCanvasEventListeners } from './canvas.js';
-import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue } from './sprite_engine.js';
+import { checkForRecovery, saveTabState, loadTabState, initUniversalSessionRecovery, resumeSession, dismissSession, exportSessionJSON, importSessionJSON } from './session.js';
+import { initCanvasEventListeners, downloadSpriteSheet, downloadFramesZip, closeCellPreview, updatePreviewFps, retryActiveCell, copyFrameToClipboard, exportActiveAnimationGif } from './canvas.js';
+import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue, generateSpriteRef, handleCustomUpload, approveReference, startAnimationQueue, cancelAnimationQueue, applyFrameReorder, hideFrameReorder, showFrameReorder, setSpriteSize } from './sprite_engine.js';
 import { startVideoGen, cancelVideoGen, selectVideoModel } from './video_engine.js';
+import { setVideoImgWidth, setVideoImgHeight } from './config.js';
 
 // ============================================================
 //  MAIN GENERATOR ORCHESTRATION & APP INIT
@@ -72,8 +73,8 @@ export async function resumeTab1Generation(prompt_id) {
             setLastSeed(sessionState.activeSeed);
         }
 
-        const filename = await pollHistory(prompt_id, _tab1AbortController.signal);
-        lastFilename = filename;
+        const fileData = await pollHistory(prompt_id, _tab1AbortController.signal);
+        lastFilename = fileData.filename;
 
         setStatus('✅ Image ready!', 'success');
         document.getElementById('loaderLabel').textContent = 'Fetching image…';
@@ -93,7 +94,8 @@ export async function resumeTab1Generation(prompt_id) {
             setStatus('❌ Image loaded but could not be displayed.', 'error');
             document.getElementById('loaderWrap').classList.remove('visible');
         };
-        imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+        imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
         saveTabState('tab1', { activePromptId: null });
 
     } catch (err) {
@@ -221,8 +223,8 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
         setStatus(`⏳ In queue (${prompt_id.slice(0, 8)})… Node progress shown in bar above`, 'active');
         saveTabState('tab1', { activePromptId: prompt_id, activeSeed: lastSeed });
 
-        const filename = await pollHistory(prompt_id, signal);
-        lastFilename = filename;
+        const fileData = await pollHistory(prompt_id, signal);
+        lastFilename = fileData.filename;
 
         setStatus('✅ Image ready!', 'success');
         document.getElementById('loaderLabel').textContent = 'Fetching image…';
@@ -242,7 +244,8 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
             setStatus('❌ Image loaded but could not be displayed. Check ComfyUI output folder.', 'error');
             document.getElementById('loaderWrap').classList.remove('visible');
         };
-        imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+        imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
         saveTabState('tab1', { activePromptId: null });
 
     } catch (err) {
@@ -394,7 +397,14 @@ export function updateResolutionPresets(type) {
 export function setPreset(w, h, btn) {
     setImgWidth(w);
     setImgHeight(h);
-    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.preset-btn:not(.video-res-btn)').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+export function setVideoRes(w, h, btn) {
+    setVideoImgWidth(w);
+    setVideoImgHeight(h);
+    document.querySelectorAll('.video-res-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 }
 
@@ -444,7 +454,7 @@ document.addEventListener('keydown', (e) => {
         const isSpriteTab = document.getElementById('tab-spritegen').classList.contains('active');
 
         if (!isSpriteTab) {
-            if (!document.getElementById('generateBtn').disabled) window.generateImage();
+            if (!document.getElementById('generateBtn').disabled) generateImage();
         } else {
             if (document.getElementById('stage2Config').style.display === 'block') {
                 if (!document.getElementById('btnStartAnim').disabled) startAnimationQueue();
@@ -507,6 +517,14 @@ export function initEventListeners() {
     // Video model chips — event delegation
     document.querySelectorAll('.video-model-chip').forEach(chip => {
         chip.addEventListener('click', () => selectVideoModel(chip));
+    });
+    // Video Res chips
+    document.querySelectorAll('.video-res-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const w = parseInt(e.currentTarget.dataset.w);
+            const h = parseInt(e.currentTarget.dataset.h);
+            setVideoRes(w, h, e.currentTarget);
+        });
     });
     // Frame count + FPS sliders live update
     const el_videoFrameSlider = document.getElementById('videoFrameSlider');

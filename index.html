@@ -525,6 +525,14 @@
 
       <!-- Parameters card -->
       <div class="card gap-md">
+        <div class="gap-sm" style="margin-bottom:12px;">
+          <label class="lbl">Resolution</label>
+          <div class="preset-btns" id="videoResGroup">
+            <button class="preset-btn active video-res-btn" data-w="512" data-h="512">512×512 (Square)</button>
+            <button class="preset-btn video-res-btn" data-w="512" data-h="768">512×768 (Portrait)</button>
+            <button class="preset-btn video-res-btn" data-w="768" data-h="512">768×512 (Landscape)</button>
+          </div>
+        </div>
         <div class="controls-grid">
           <div class="control-item">
             <label class="control-label" for="videoFrameSlider">Frames</label>

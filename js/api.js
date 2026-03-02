@@ -75,7 +75,8 @@ export function initWebSocket() {
 
     newSocket.onclose = () => {
         const wasMidGeneration = document.getElementById('btnStartAnim')?.disabled ||
-            document.getElementById('generateBtn')?.disabled;
+            document.getElementById('generateBtn')?.disabled ||
+            document.getElementById('btnStartVideo')?.disabled;
         setSocket(null);
         let newRetries = wsRetries + 1;
         setWsRetries(newRetries);
@@ -130,7 +131,7 @@ export async function pollHistory(prompt_id, signal = null) {
                 const nodeKey = Object.keys(outputs).find(k => outputs[k].images || outputs[k].gifs);
                 if (nodeKey) {
                     const list = outputs[nodeKey].images || outputs[nodeKey].gifs;
-                    return list[0].filename;
+                    return list[0];
                 }
             }
         }

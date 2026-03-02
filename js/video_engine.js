@@ -55,8 +55,8 @@ export async function startVideoGen() {
 
     const frameCount = parseInt(document.getElementById('videoFrameSlider')?.value) || ANIMATEDIFF_DEFAULTS.frameCount;
     const fps = parseInt(document.getElementById('videoFpsSlider')?.value) || ANIMATEDIFF_DEFAULTS.fps;
-    const width = ANIMATEDIFF_DEFAULTS.width;
-    const height = ANIMATEDIFF_DEFAULTS.height;
+    const width = videoImgWidth;
+    const height = videoImgHeight;
 
     _videoAbortController = new AbortController();
     _videoCancelFlag = false;
@@ -110,10 +110,11 @@ export async function startVideoGen() {
 
         // 4. Poll for result (VHS outputs a gif, so filename ends in .gif)
         setVideoStatus('⏳ Generating frames… this may take a minute…', 'active');
-        const filename = await pollHistory(data.prompt_id, signal);
+        const fileData = await pollHistory(data.prompt_id, signal);
 
         // 5. Display result
-        const gifUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+        const gifUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
         const resultImg = document.getElementById('videoResult');
         resultImg.src = gifUrl;
         resultImg.style.display = 'block';
@@ -170,9 +171,10 @@ export async function resumeVideoGen(prompt_id) {
         import('./api.js').then(({ initWebSocket }) => initWebSocket());
 
         setVideoStatus('⏳ Generating frames… this may take a minute…', 'active');
-        const filename = await pollHistory(prompt_id, signal);
+        const fileData = await pollHistory(prompt_id, signal);
 
-        const gifUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+        const gifUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
         const resultImg = document.getElementById('videoResult');
         resultImg.src = gifUrl;
         resultImg.style.display = 'block';

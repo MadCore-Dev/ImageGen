@@ -105,9 +105,10 @@ export async function generateSpriteRef() {
         }
         const data = await res.json();
 
-        const filename = await pollHistory(data.prompt_id);
+        const fileData = await pollHistory(data.prompt_id);
 
-        const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+        const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+        const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
         document.getElementById('spriteRefImg').src = imgUrl;
         document.getElementById('spriteRefImg').style.display = 'block';
 
@@ -514,8 +515,9 @@ export async function startAnimationQueue() {
 
                 saveSession({ activeAnimId: animId, activeFrameIndex: c, activePromptId: data.prompt_id });
 
-                const filename = await pollHistory(data.prompt_id, abortSignal);
-                const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output&t=${Date.now()}`;
+                const fileData = await pollHistory(data.prompt_id, abortSignal);
+                const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
+                const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
 
                 await new Promise((resolve, reject) => {
                     const img = new Image();
@@ -537,7 +539,7 @@ export async function startAnimationQueue() {
                 if (sessionState) {
                     const cf = sessionState.completedFrames || {};
                     if (!cf[animId]) cf[animId] = [];
-                    cf[animId][c] = filename;
+                    cf[animId][c] = fileData;
                     saveSession({
                         completedFrames: cf,
                         activePromptId: null,
@@ -687,7 +689,7 @@ export async function resumeAnimationQueue({ s, rowStatuses }) {
                 if (sessionState) {
                     const cf = sessionState.completedFrames || {};
                     if (!cf[animId]) cf[animId] = [];
-                    cf[animId][c] = filename;
+                    cf[animId][c] = fileData;
                     saveSession({ completedFrames: cf, activePromptId: null, lastFrameRefImg: currentFrameRefImg });
                 }
 
@@ -753,15 +755,23 @@ function buildThumbRow(animId) {
     const row = document.getElementById('frameThumbRow');
     row.innerHTML = '';
 
-    _reorderList.forEach((filename, i) => {
+    _reorderList.forEach((fileItem, i) => {
         const wrap = document.createElement('div');
         wrap.className = 'frame-thumb-wrap';
         wrap.draggable = true;
         wrap.dataset.idx = i;
 
+        let fname = '', subQ = '';
+        if (fileItem && typeof fileItem === 'object') {
+            fname = fileItem.filename;
+            subQ = fileItem.subfolder ? `&subfolder=${encodeURIComponent(fileItem.subfolder)}` : '';
+        } else if (typeof fileItem === 'string') {
+            fname = fileItem;
+        }
+
         const img = document.createElement('img');
         img.className = 'frame-thumb';
-        img.src = filename ? `http://${COMFY_API_LIVE}/view?filename=${filename}&type=output` : '';
+        img.src = fname ? `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fname)}${subQ}&type=output` : '';
         img.alt = `Frame ${i + 1}`;
         img.draggable = false;
 
