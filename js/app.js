@@ -277,12 +277,14 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
         setActivePromptIds({ main: null });
     } finally {
         const cancelBtn = document.getElementById('cancelBtn');
-        if (cancelBtn && !isBatchRun) cancelBtn.style.display = 'none';
-        btn.disabled = false;
-        btn.textContent = '✦ Generate Image';
-        setTabActivity('imagegen', false);
-        _tab1AbortController = null;
-        checkComfyStatus();
+        if (!isBatchRun) {
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '✦ Generate Image';
+            setTabActivity('imagegen', false);
+            _tab1AbortController = null;
+            checkComfyStatus();
+        }
     }
 };
 
@@ -328,6 +330,10 @@ let generateImage = async function () {
                     const img = document.createElement('img');
                     img.src = src;
                     img.alt = `Batch image ${i + 1}`;
+                    img.style.cursor = 'pointer';
+                    img.addEventListener('click', () => {
+                        document.getElementById('resultImage').src = src;
+                    });
                     cards[i].innerHTML = '';
                     cards[i].appendChild(img);
                     cards[i].appendChild(dlBtn);
@@ -344,6 +350,7 @@ let generateImage = async function () {
         btn.disabled = false;
         btn.textContent = signal.aborted ? '✦ Generate Image' : `✦ Generate ${n} Images`;
         setTabActivity('imagegen', false);
+        checkComfyStatus();
         if (!signal.aborted) setStatus(`✅ Batch of ${n} complete!`, 'success');
     }
 };
