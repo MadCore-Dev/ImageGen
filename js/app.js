@@ -163,6 +163,8 @@ export function cancelGenerateImage() {
             }).catch(() => { });
         }
     } catch (e) { console.error('Failed to interrupt ComfyUI:', e); }
+    const cancelBtn = document.getElementById('cancelBtn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
 const _originalGenerateImage = async function (signal, isBatchRun = false) {
@@ -204,8 +206,8 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
             });
         } catch (fetchErr) {
             if (fetchErr.name === 'AbortError') throw fetchErr;
-            console.error('Traffic Cop connection failed:', fetchErr);
-            throw new Error(`Traffic Cop at ${TRAFFIC_COP_LIVE} is unreachable. Is the service running on port 5050?`);
+            console.warn('Traffic Cop unreachable, proceeding to ComfyUI...', fetchErr);
+            setStatus('Traffic Cop unreachable, trying ComfyUI directly...', 'active');
         }
 
         const copData = await copRes.json();
@@ -336,6 +338,7 @@ let generateImage = async function () {
             }
         }
     } finally {
+        const cancelBtn = document.getElementById('cancelBtn');
         if (cancelBtn) cancelBtn.style.display = 'none';
         _tab1AbortController = null;
         btn.disabled = false;

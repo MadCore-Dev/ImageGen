@@ -97,8 +97,8 @@ export async function startVideoGen() {
             });
         } catch (fetchErr) {
             if (fetchErr.name === 'AbortError') throw fetchErr;
-            console.error('Traffic Cop connection failed:', fetchErr);
-            throw new Error(`Traffic Cop at ${TRAFFIC_COP_LIVE} is unreachable. Is the service running on port 5050?`);
+            console.warn('Traffic Cop unreachable, proceeding to ComfyUI...', fetchErr);
+            setVideoStatus('Traffic Cop unreachable, trying ComfyUI directly...', 'active');
         }
         const copData = await copRes.json();
         if (copData.status !== 'success') {

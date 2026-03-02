@@ -69,7 +69,7 @@ export async function downloadFramesZip() {
     a.click();
     setTimeout(() => {
         URL.revokeObjectURL(a.href);
-    }, 100);
+    }, 2000);
 }
 
 // Canvas click detection setup (extracted into an exportable init function)
@@ -334,10 +334,11 @@ export function exportActiveAnimationGif() {
             a.href = URL.createObjectURL(blob);
             a.download = `${animId}_animation_${Date.now()}.gif`;
             a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 100);
+            setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 
             btn.innerText = '✅ Exported!';
             setTimeout(() => { btn.innerText = ogText; btn.disabled = false; }, 2000);
+            gif.freeWorkers();
         });
 
         gif.render();
@@ -415,8 +416,8 @@ export async function retryActiveCell() {
             img.onload = () => {
                 const canvas = document.getElementById('spriteCanvas');
                 const ctx = canvas.getContext('2d');
-                ctx.imageSmoothingEnabled = false; // Fix: Prevent blurring on single frame retry
                 ctx.clearRect(col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
+                ctx.imageSmoothingEnabled = false;
                 ctx.drawImage(img, 0, 0, activeSpriteSize, activeSpriteSize, col * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize);
                 resolve();
             };
@@ -471,7 +472,7 @@ export async function cropAndUpscaleCell(row, col, cellSize, targetSize = 768) {
 }
 
 // Utility for upscaling (Nearest-Neighbor)
-async function upscaleImageBlob(blob, minSide) {
+export async function upscaleImageBlob(blob, minSide) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         const url = URL.createObjectURL(blob);

@@ -2,36 +2,81 @@
 
 This document tracks the resolution of the comprehensive audit performed on the ImageGen project.
 
-## ✅ RESOLVED / FIXED
+## 🛠️ FEATURE IMPLEMENTATIONS (EXECUTE EXACTLY AS WRITTEN)
 
-### 🖼️ 1. Rendering & Logic
-- [x] **Nearest Neighbor Enforced**: `imageSmoothingEnabled = false` is now applied to all critical `drawImage` calls in `canvas.js` and `sprite_engine.js` to prevent pixel-art blurring.
-- [x] **SDXL img2img Crash Fixed**: Implemented `cropAndUpscaleCell` in `canvas.js`. Retrying a frame now upscales the 64x64 reference to 768px (Nearest Neighbor) before uploading, respecting SDXL's resolution limits.
-- [x] **Sequence-Aware Retries**: Retrying a frame now correctly uses the *previous* frame in the sequence as a reference (or `baseRefBlob` if it's the first frame), maintaining visual continuity.
-- [x] **Custom Upload Fix**: `handleCustomUpload` now correctly clears the `.visible` class from the loader in both success and error states.
+**Task 1: VRAM Management Button**
+- **File 1:** `index.html`
+- **Action:** Find the `<div style="margin-top:10px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">` block inside the `<header>`. Add this button next to the Settings button: `<button id="btnFreeVram" style="background:rgba(255,255,255,0.05); border:1px solid var(--warning); border-radius:20px; padding:3px 12px; font-size:11px; color:var(--warning); cursor:pointer;">🧹 Free VRAM</button>`
+- **File 2:** `js/app.js`
+- **Action:** Inside the `initEventListeners()` function, add this block:
+  ```javascript
+  const el_btnFreeVram = document.getElementById('btnFreeVram');
+  if (el_btnFreeVram) el_btnFreeVram.addEventListener('click', async () => {
+      try {
+          await fetch(`http://${COMFY_API_LIVE}/free`, { method: 'POST', body: JSON.stringify({unload_models:true, free_memory:true}) });
+          setStatus('VRAM cleared successfully!', 'success');
+      } catch(e) { setStatus('Failed to clear VRAM', 'error'); }
+  });
 
-### 🚦 2. Network & Hardware
-- [x] **Traffic Cop Resilience**: Added `try/catch` wrappers for all `/comfyui/start` calls. Users now receive descriptive error messages if Traffic Cop (port 5050) or ComfyUI is unreachable.
-- [x] **Isolated Cancellation**: Fixed "Cross-Pollution" of aborts. Each tab now tracks its own `activePromptId`. Clicking "Cancel" now only `/interrupt`s the active job and `delete`s the specific queued prompts for that tab, rather than clearing the global queue.
+```
 
-### 🐛 3. State & Persistence
-- [x] **LoRA Support (Tab 2 & 3)**: Fixed `workflows.js` to support LoRA injection for SDXL and SD1.5 models. Added LoRA support to the `AnimateDiff` workflow builder.
-- [x] **Settings Modal Restored**: Re-bound event listeners from `autoGenId_` placeholders to correct IDs (`btnOpenSettings`, `btnCloseSettings`, etc.). Restored missing HTML elements for "Copy Output Path".
-- [x] **Session Recovery Improvements**: Retrying a cell now correctly updates `session.completedFrames` and `lastFrameRefImg` to ensure the fix persists across refreshes.
+**Task 2: Purge Temp Files Button**
 
-### 📉 4. Memory & Performance
-- [x] **Ghost Button Cleanup**: Added `finally` blocks to batch and single generation loops in `app.js` to ensure the "Cancel" button is hidden on completion/error.
-- [x] **GIF Worker Pathing**: Corrected `workerScript` path to `vendor/gif.worker.js`.
-- [x] **Blob URL Cleanup**: Added `URL.revokeObjectURL` to sequential generation loop to prevent memory leaks during long sessions.
+* **File 1:** `index.html`
+* **Action:** Inside the `#settingsModal` (`<div class="modal-box">`), add this right above the `btnSaveSettings` button:
+`<div class="settings-row"><button id="btnPurgeTemp" style="width:100%; padding:8px; background:rgba(248,113,113,0.1); border:1px solid var(--error); border-radius:6px; color:var(--error); font-size:12px; cursor:pointer;">🗑️ Purge ComfyUI Temp Inputs</button><div class="settings-hint">Deletes intermediate frame files from the ComfyUI input directory via Traffic Cop.</div></div>`
+* **File 2:** `js/app.js`
+* **Action:** Inside the `initEventListeners()` function, add this block:
+```javascript
+const el_btnPurgeTemp = document.getElementById('btnPurgeTemp');
+if (el_btnPurgeTemp) el_btnPurgeTemp.addEventListener('click', async () => {
+    try {
+        el_btnPurgeTemp.textContent = '⏳ Purging...';
+        await fetch(`${TRAFFIC_COP_LIVE}/comfyui/clean_input`, { method: 'POST' });
+        el_btnPurgeTemp.textContent = '✅ Purged!';
+        setTimeout(() => el_btnPurgeTemp.textContent = '🗑️ Purge ComfyUI Temp Inputs', 2000);
+    } catch(e) { 
+        alert('Failed to purge. Ensure Traffic Cop supports /comfyui/clean_input.'); 
+        el_btnPurgeTemp.textContent = '🗑️ Purge ComfyUI Temp Inputs'; 
+    }
+});
 
----
+```
 
-## 🟡 PENDING / FUTURE IMPROVEMENTS
 
-- [ ] **Disk Bloat Cleanup**: The ComfyUI `/input` folder still accumulates transition frames. Need a server-side cleanup task or a "Purge Temp Files" button.
-- [ ] **VRAM Management**: Add a button to trigger ComfyUI's `/free` API to manually clear GPU memory.
-- [ ] **Mobile Responsive Pass**: Further refine the `.controls-grid` for ultra-narrow screens (e.g. iPhone SE).
-- [ ] **Undo/Redo System**: Persistence for manual frame reordering and deletions.
 
----
-*Audit completed and addressed by Antigravity AI.*
+**Task 3: Mobile Responsive Pass (.controls-grid)**
+
+* **File:** `css/styles.css`
+* **Action:** Find the media query `@media (max-width: 600px)` near the bottom of the file. Locate the `.controls-grid { grid-template-columns: 1fr 1fr; }` rule inside it. Change it to: `.controls-grid { display: flex; flex-direction: column; gap: 12px; }`. This forces the sliders to stack vertically on narrow phones.
+
+**Task 4: Undo Reorder System**
+
+* **File 1:** `index.html`
+* **Action:** Find the button with `id="btnReorderFrames"`. Right below it, add this new button:
+`<button class="btn-download" id="btnUndoReorder" aria-label="Undo last frame reorder" style="flex:1; display:none; background:rgba(251,191,36,0.1); border:1px solid var(--warning); color:var(--warning); font-size:12px;">↩️ Undo</button>`
+* **File 2:** `js/sprite_engine.js`
+* **Action 1:** At the top of the file, right below `let _dragSrcIdx = null;`, define a new variable: `let _backupReorderState = null;`
+* **Action 2:** Inside the `applyFrameReorder()` function, *before* the line `session.completedFrames[_reorderAnimId] = _reorderList;`, add this code:
+`_backupReorderState = JSON.parse(JSON.stringify(session.completedFrames)); document.getElementById('btnUndoReorder').style.display = 'block';`
+* **Action 3:** At the bottom of `sprite_engine.js`, add this new function:
+```javascript
+export function undoFrameReorder() {
+    if (!_backupReorderState) return;
+    const session = loadSession(false);
+    if (!session) return;
+    session.completedFrames = JSON.parse(JSON.stringify(_backupReorderState));
+    saveSession(session);
+    _backupReorderState = null;
+    document.getElementById('btnUndoReorder').style.display = 'none';
+    setSpriteStatus('↩️ Reorder undone. Please refresh or reload session to see changes.', 'success');
+}
+
+```
+
+
+* **File 3:** `js/app.js`
+* **Action 1:** In the `import` block for `./sprite_engine.js`, add `undoFrameReorder` to the list of imported functions.
+* **Action 2:** Inside `initEventListeners()`, add this listener:
+`const el_btnUndoReorder = document.getElementById('btnUndoReorder'); if (el_btnUndoReorder) el_btnUndoReorder.addEventListener('click', () => undoFrameReorder());`
+

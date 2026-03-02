@@ -14,7 +14,7 @@ import { pollHistory, uploadImageToComfy } from './api.js';
 import { setSpriteStatus, showSpriteProgress, setProgress, setTabActivity } from './ui.js';
 import { buildWorkflow, buildImg2ImgWorkflow } from './workflows.js';
 import { saveSession, loadSession, clearSession } from './session.js';
-import { playAnimationLoop, retryAnimationRow, cancelRetryAnimation } from './canvas.js';
+import { playAnimationLoop, retryAnimationRow, cancelRetryAnimation, upscaleImageBlob } from './canvas.js';
 
 // ============================================================
 //  SPRITE SHEET STAGE 1: REFERENCE GENERATION
@@ -90,8 +90,8 @@ export async function generateSpriteRef() {
         try {
             copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, { method: 'POST' });
         } catch (fetchErr) {
-            console.error('Traffic Cop connection failed:', fetchErr);
-            throw new Error(`Traffic Cop at ${TRAFFIC_COP_LIVE} is unreachable. Is the service running on port 5050?`);
+            console.warn('Traffic Cop unreachable, proceeding to ComfyUI...', fetchErr);
+            setSpriteStatus('Traffic Cop unreachable, trying ComfyUI directly...', 'active');
         }
         const copData = await copRes.json();
         if (copData.status !== 'success') {
@@ -552,7 +552,7 @@ export async function startAnimationQueue() {
                 // Category 3: SDXL Sizing Fix (Upscale for img2img recursion)
                 if (selectedModel.type === 'sdxl' || selectedModel.type === 'sdxl_lightning') {
                     if (activeSpriteSize < 768) {
-                        newlyGeneratedBlob = await resizeImageBlob(newlyGeneratedBlob, 768);
+                        newlyGeneratedBlob = await upscaleImageBlob(newlyGeneratedBlob, 768);
                     }
                 }
 
