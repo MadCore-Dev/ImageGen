@@ -1,6 +1,6 @@
 import {
     COMFY_API_LIVE, CLIENT_ID, socket, wsRetries, WS_MAX_RETRIES,
-    setSocket, setWsRetries
+    setSocket, setWsRetries, activePromptIds
 } from './config.js';
 import { setProgress, setSpriteStatus, setStatus } from './ui.js';
 
@@ -40,31 +40,31 @@ export function initWebSocket() {
         try {
             lastComfyActivity = Date.now();
             const data = JSON.parse(event.data);
-            const isSpriteTabActive = document.getElementById('tab-spritegen').classList.contains('active');
-            const isVideoTabActive = document.getElementById('tab-videogen').classList.contains('active');
-            const isAnimatingQueue = document.getElementById('btnStartAnim')?.disabled;
+
+            // activePromptIds is a live reference to the exported object from config.js
+            const { value, max, prompt_id } = data.data || {};
+            const pc = value && max ? Math.round((value / max) * 100) : 0;
 
             if (data.type === 'progress') {
-                const { value, max } = data.data;
-                const pc = Math.round((value / max) * 100);
-                setProgress(pc); // updates the main progress bar
-
-                if (isSpriteTabActive) {
-                    const prefix = isAnimatingQueue ? 'Sequential Queue' : 'Reference Gen';
+                if (prompt_id === activePromptIds.main) {
+                    setProgress(pc, 'main');
+                } else if (prompt_id === activePromptIds.sprite) {
+                    setProgress(pc, 'sprite');
+                    const prefix = activePromptIds.isSequential ? 'Sequential Queue' : 'Reference Gen';
                     setSpriteStatus(`🎨 ${prefix}: Step ${value}/${max} (${pc}%)`, 'active');
-                } else if (isVideoTabActive) {
+                } else if (prompt_id === activePromptIds.video) {
                     import('./ui.js').then(({ setVideoStatus, setVideoProgress }) => {
                         setVideoProgress(pc);
                         setVideoStatus(`🎬 Rendering frame ${value}/${max} (${pc}%)`, 'active');
                     });
                 }
             } else if (data.type === 'executing' && data.data.node) {
-                document.getElementById('loaderLabel').textContent = `Running node ${data.data.node}…`;
-
-                if (isSpriteTabActive) {
-                    const prefix = isAnimatingQueue ? 'Sequential Queue' : 'Reference Gen';
+                if (prompt_id === activePromptIds.main) {
+                    document.getElementById('loaderLabel').textContent = `Running node ${data.data.node}…`;
+                } else if (prompt_id === activePromptIds.sprite) {
+                    const prefix = activePromptIds.isSequential ? 'Sequential Queue' : 'Reference Gen';
                     setSpriteStatus(`⚙️ ${prefix}: Running Node ${data.data.node}…`, 'active');
-                } else if (isVideoTabActive) {
+                } else if (prompt_id === activePromptIds.video) {
                     import('./ui.js').then(({ setVideoStatus }) => {
                         setVideoStatus(`⚙️ Processing Node ${data.data.node}…`, 'active');
                     });
@@ -74,9 +74,7 @@ export function initWebSocket() {
     };
 
     newSocket.onclose = () => {
-        const wasMidGeneration = document.getElementById('btnStartAnim')?.disabled ||
-            document.getElementById('generateBtn')?.disabled ||
-            document.getElementById('btnStartVideo')?.disabled;
+        const wasMidGeneration = !!(activePromptIds.main || activePromptIds.sprite || activePromptIds.video);
         setSocket(null);
         let newRetries = wsRetries + 1;
         setWsRetries(newRetries);
@@ -92,7 +90,7 @@ export function initWebSocket() {
 }
 
 // ============================================================
-//  IMAGE UPLOAD & LONG-POLLING
+//  IMAGE UPLOAD
 // ============================================================
 export async function uploadImageToComfy(blob, filename) {
     const formData = new FormData();

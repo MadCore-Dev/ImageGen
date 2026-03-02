@@ -58,15 +58,20 @@ export function setStatus(msg, state = 'idle') {
     if (text) text.textContent = msg;
 }
 
-export function setProgress(pc) {
-    const tabSpriteGen = document.getElementById('tab-spritegen');
-    const isSpriteTab = tabSpriteGen && tabSpriteGen.classList.contains('active');
+export function setProgress(pc, tab = null) {
+    const activeTabId = document.querySelector('.tab-content.active')?.id;
+    const targetTab = tab || (activeTabId === 'tab-spritegen' ? 'sprite' : 'main');
 
-    if (isSpriteTab) {
+    if (targetTab === 'sprite') {
         const sBar = document.getElementById('spriteProgressBar');
         if (sBar) sBar.style.width = `${pc}%`;
         const pct = document.getElementById('spriteStatusPct');
         if (pct) pct.textContent = `${pc}%`;
+    } else if (targetTab === 'video') {
+        const vBar = document.getElementById('videoProgressBar');
+        if (vBar) vBar.style.width = `${pc}%`;
+        const vPct = document.getElementById('videoStatusPct');
+        if (vPct) vPct.textContent = `${pc}%`;
     } else {
         const bar = document.getElementById('progressBar');
         if (bar) bar.style.width = `${pc}%`;
@@ -275,7 +280,15 @@ export function copyOutputPath() {
         range.selectNode(document.getElementById('outputFolderPath'));
         window.getSelection().removeAllRanges();
         window.getSelection().addRange(range);
-        label.textContent = '⌘C to copy';
-        setTimeout(() => { label.textContent = '📋 Copy'; window.getSelection().removeAllRanges(); }, 2500);
+        try {
+            const successful = document.execCommand('copy');
+            label.textContent = successful ? '✓ Copied!' : '⌘C to copy';
+        } catch (err) {
+            label.textContent = '⌘C to copy';
+        }
+        setTimeout(() => {
+            label.textContent = '📋 Copy';
+            window.getSelection().removeAllRanges();
+        }, 2500);
     });
 }

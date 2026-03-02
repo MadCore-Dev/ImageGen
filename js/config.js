@@ -179,6 +179,7 @@ export let selectedModel = { name: 'flux', type: 'gguf' };
 export let imgWidth = 512;
 export let imgHeight = 512;
 export let activeStyleKw = { positive: '', negative: '' };
+export let activePromptIds = { main: null, sprite: null, video: null, isSequential: false };
 
 export let canvasCtx = null;
 
@@ -208,6 +209,7 @@ export function setSelectedModel(val) { selectedModel = val; }
 export function setImgWidth(val) { imgWidth = val; }
 export function setImgHeight(val) { imgHeight = val; }
 export function setActiveStyleKw(val) { activeStyleKw = val; }
+export function setActivePromptIds(updates) { Object.assign(activePromptIds, updates); }
 
 export function setCanvasCtx(val) { canvasCtx = val; }
 
@@ -222,10 +224,15 @@ export const ANIMATEDIFF_MODEL = 'mm_sd_v15_v3.safetensors';
  * Only SD1.5 checkpoints are compatible with AnimateDiff.
  * This list controls what model chips are shown in Tab 3.
  */
-export const ANIMATEDIFF_COMPAT_MODELS = [
+export let ANIMATEDIFF_COMPAT_MODELS = [
   { name: 'DreamShaper_8_pruned.safetensors', type: 'sd15', label: 'DreamShaper 8' },
-  { name: 'epiCRealism_naturalSinRC1.safetensors', type: 'sd15', label: 'epiCRealism' }
+  { name: 'epiCRealism_naturalSinRC1.safetensors', type: 'sd15', label: 'epiCRealism' },
+  { name: 'Juggernaut_v7.safetensors', type: 'sd15', label: 'Juggernaut v7' }
 ];
+
+export function setAnimateDiffModels(models) {
+  ANIMATEDIFF_COMPAT_MODELS = models;
+}
 
 /** Default generation parameters for AnimateDiff */
 export const ANIMATEDIFF_DEFAULTS = {

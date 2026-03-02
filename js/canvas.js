@@ -12,8 +12,8 @@ import {
 } from './config.js';
 import { uploadImageToComfy, pollHistory } from './api.js';
 import { buildImg2ImgWorkflow } from './workflows.js';
-import { setSpriteStatus, showSpriteProgress, setProgress } from './ui.js';
 import { getSpriteModel } from './sprite_engine.js';
+import { saveSession, loadSession } from './session.js';
 
 // ============================================================
 //  STAGE 4: SHEET EXPORT & SINGLE FRAME LOGIC
@@ -24,12 +24,15 @@ export function downloadSpriteSheet() {
     const a = document.createElement('a');
     a.href = dataUrl;
 
+    // Nearest-neighbor for download is already handled by toDataURL if the canvas was drawn with it, 
+    // but the main canvas and temp canvases should have it set.
+
     const promptSlug = (document.getElementById('spritePrompt')?.value || 'sprite')
         .trim().slice(0, 24).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
     const animSlug = (currentAnimationGrid || []).join('-').slice(0, 30) || 'sheet';
     a.download = `epoch_${promptSlug}_${animSlug}_${Date.now()}.png`;
     a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    // No need for URL.revokeObjectURL on dataUrl, but good to have for blobs.
 }
 
 export async function downloadFramesZip() {
@@ -46,6 +49,7 @@ export async function downloadFramesZip() {
             tempCanvas.width = activeSpriteSize;
             tempCanvas.height = activeSpriteSize;
             const tCtx = tempCanvas.getContext('2d');
+            tCtx.imageSmoothingEnabled = false; // Nearest-neighbor for pixel art
             tCtx.drawImage(canvas, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize, 0, 0, activeSpriteSize, activeSpriteSize);
 
             const dataUrl = tempCanvas.toDataURL('image/png');
@@ -63,7 +67,9 @@ export async function downloadFramesZip() {
     const animSlug = (currentAnimationGrid || []).join('-').slice(0, 30) || 'frames';
     a.download = `epoch_${promptSlug}_${animSlug}_${Date.now()}.zip`;
     a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    setTimeout(() => {
+        URL.revokeObjectURL(a.href);
+    }, 100);
 }
 
 // Canvas click detection setup (extracted into an exportable init function)
@@ -250,6 +256,7 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
             await new Promise((resolve, reject) => {
                 const img = new Image(); img.crossOrigin = 'Anonymous';
                 img.onload = () => {
+                    canvasCtx.imageSmoothingEnabled = false; // Preserving pixels
                     canvasCtx.drawImage(img, c * activeSpriteSize, rowIndex * activeSpriteSize, activeSpriteSize, activeSpriteSize);
                     resolve();
                 };
@@ -257,7 +264,16 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
             });
 
             const blobRes = await fetch(imgUrl, { signal });
-            const blob = await blobRes.blob();
+            let blob = await blobRes.blob();
+
+            // Category 3: Upscale for SDXL img2img if needed
+            const modelType = getSpriteModel().type;
+            if (modelType === 'sdxl' || modelType === 'sdxl_lightning') {
+                if (activeSpriteSize < 768) {
+                    blob = await upscaleImageBlob(blob, 768);
+                }
+            }
+
             currentFrameRefImg = await uploadImageToComfy(blob, `recur_retry_${animId}_${c}.png`);
 
             if (timelineDiv) timelineDiv.innerText = '✅'.repeat(c + 1) + '⬜'.repeat(framesCountCurrent - c - 1);
@@ -274,6 +290,8 @@ export async function retryAnimationRow(animId, rowIndex, framesCount) {
         setSpriteStatus(`⛔ Retry portion cancelled.`, 'error');
     } else {
         setSpriteStatus(`✅ Row ${animId} retried!`, 'success');
+        // Fix: Call saveSession after successful row retry
+        saveSession({ lastFrameRefImg: currentFrameRefImg });
     }
     if (cancelBtn) cancelBtn.style.display = 'none';
 }
@@ -305,6 +323,7 @@ export function exportActiveAnimationGif() {
             tempCanvas.width = activeSpriteSize;
             tempCanvas.height = activeSpriteSize;
             const tCtx = tempCanvas.getContext('2d');
+            tCtx.imageSmoothingEnabled = false; // Nearest-neighbor for GIF frames
             tCtx.drawImage(sourceCanvas, c * activeSpriteSize, row * activeSpriteSize, activeSpriteSize, activeSpriteSize, 0, 0, activeSpriteSize, activeSpriteSize);
 
             gif.addFrame(tempCanvas, { delay: gifFrameDelay });
@@ -315,7 +334,7 @@ export function exportActiveAnimationGif() {
             a.href = URL.createObjectURL(blob);
             a.download = `${animId}_animation_${Date.now()}.gif`;
             a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+            setTimeout(() => URL.revokeObjectURL(a.href), 100);
 
             btn.innerText = '✅ Exported!';
             setTimeout(() => { btn.innerText = ogText; btn.disabled = false; }, 2000);
@@ -373,6 +392,9 @@ export async function retryActiveCell() {
         if (!qRes.ok) throw new Error('Failed to queue retry job.');
         const { prompt_id } = await qRes.json();
 
+        // Fix: Store active prompt for recovery
+        saveSession({ activeAnimId: animId, activeFrameIndex: frameIndex, activePromptId: prompt_id });
+
         const fileData = await pollHistory(prompt_id);
         const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
         const imgUrl = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output`;
@@ -391,6 +413,30 @@ export async function retryActiveCell() {
             img.src = imgUrl;
         });
 
+        // Fix: Update session.completedFrames and chained reference
+        const blobRes = await fetch(imgUrl);
+        const newlyGeneratedBlob = await blobRes.blob();
+        const currentFrameRefImg = await uploadImageToComfy(newlyGeneratedBlob, `retry_cell_${animId}_${frameIndex}.png`);
+
+        const sessionState = loadSession(false);
+        if (sessionState) {
+            const cf = sessionState.completedFrames || {};
+            if (!cf[animId]) cf[animId] = [];
+            cf[animId][frameIndex] = fileData;
+
+            const updates = {
+                completedFrames: cf,
+                activePromptId: null
+            };
+
+            // If we retried the last completed frame, update lastFrameRefImg for the next generation
+            if (sessionState.activeAnimId === animId && sessionState.activeFrameIndex === frameIndex) {
+                updates.lastFrameRefImg = currentFrameRefImg;
+            }
+
+            saveSession(updates);
+        }
+
         setSpriteStatus(`✨ Retried ${animId} Frame ${frameIndex + 1} successfully!`, 'success');
         showSpriteProgress(false);
 
@@ -399,4 +445,28 @@ export async function retryActiveCell() {
         setSpriteStatus(`Error retrying frame: ${err.message}`, 'error');
         showSpriteProgress(false);
     }
+}
+// Utility for upscaling (Nearest-Neighbor)
+async function upscaleImageBlob(blob, minSide) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(blob);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            if (Math.max(img.width, img.height) >= minSide) return resolve(blob);
+
+            const scale = minSide / Math.max(img.width, img.height);
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            const ctx = c.getContext('2d');
+            ctx.imageSmoothingEnabled = false; // Nearest-Neighbor
+            ctx.drawImage(img, 0, 0, w, h);
+            c.toBlob(resolve, 'image/png');
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
 }

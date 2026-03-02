@@ -4,7 +4,7 @@ import {
     OUTPUT_PATH_LIVE, setOutputPathLive,
     CLIENT_ID, wsRetries, setWsRetries, socket,
     lastSeed, setLastSeed,
-    lastFilename, selectedModel,
+    lastFilename, setLastFilename, selectedModel,
     imgWidth, setImgWidth,
     imgHeight, setImgHeight,
     activeStyleKw,
@@ -21,8 +21,8 @@ import { buildWorkflow } from './workflows.js';
 import { checkForRecovery, saveTabState, loadTabState, initUniversalSessionRecovery, resumeSession, dismissSession, exportSessionJSON, importSessionJSON } from './session.js';
 import { initCanvasEventListeners, downloadSpriteSheet, downloadFramesZip, closeCellPreview, updatePreviewFps, retryActiveCell, copyFrameToClipboard, exportActiveAnimationGif } from './canvas.js';
 import { selectSpriteModel, initAnimationPicker, resumeAnimationQueue, generateSpriteRef, handleCustomUpload, approveReference, startAnimationQueue, cancelAnimationQueue, applyFrameReorder, hideFrameReorder, showFrameReorder, setSpriteSize } from './sprite_engine.js';
-import { startVideoGen, cancelVideoGen, selectVideoModel } from './video_engine.js';
-import { setVideoImgWidth, setVideoImgHeight } from './config.js';
+import { startVideoGen, cancelVideoGen, selectVideoModel, initVideoModelChips } from './video_engine.js';
+import { setVideoImgWidth, setVideoImgHeight, setActivePromptIds } from './config.js';
 
 // ============================================================
 //  MAIN GENERATOR ORCHESTRATION & APP INIT
@@ -74,7 +74,7 @@ export async function resumeTab1Generation(prompt_id) {
         }
 
         const fileData = await pollHistory(prompt_id, _tab1AbortController.signal);
-        lastFilename = fileData.filename;
+        setLastFilename(fileData.filename);
 
         setStatus('✅ Image ready!', 'success');
         document.getElementById('loaderLabel').textContent = 'Fetching image…';
@@ -190,17 +190,27 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
     document.getElementById('loaderWrap').classList.add('visible');
     document.getElementById('loaderLabel').textContent = 'Contacting Traffic Cop…';
     showProgress(true);
-    setProgress(0);
+    setProgress(0, 'main');
     setStatus('🚦 Contacting Traffic Cop: Preparing hardware…', 'active');
-
     try {
-        const copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, { method: 'POST', signal });
+        // 1. Wake ComfyUI via TrafficCop
+        let copRes;
+        try {
+            copRes = await fetch(`${TRAFFIC_COP_LIVE}/comfyui/start`, {
+                method: 'POST', signal
+            });
+        } catch (fetchErr) {
+            if (fetchErr.name === 'AbortError') throw fetchErr;
+            console.error('Traffic Cop connection failed:', fetchErr);
+            throw new Error(`Traffic Cop at ${TRAFFIC_COP_LIVE} is unreachable. Is the service running on port 5050?`);
+        }
+
         const copData = await copRes.json();
         if (copData.status !== 'success') {
             throw new Error(`Traffic Cop failed: ${copData.message || 'Could not start ComfyUI'}`);
         }
 
-        wsRetries = 0;
+        setWsRetries(0);
         initWebSocket();
 
         setStatus(`🎨 ComfyUI Ready. Queuing ${selectedModel.name.replace('.safetensors', '')} workflow…`, 'active');
@@ -213,18 +223,18 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: workflow, client_id: CLIENT_ID }),
-
         });
         if (!queueRes.ok) {
             const errText = await queueRes.text();
             throw new Error(`Queue failed (HTTP ${queueRes.status}): ${errText}`);
         }
         const { prompt_id } = await queueRes.json();
+        setActivePromptIds({ main: prompt_id });
         setStatus(`⏳ In queue (${prompt_id.slice(0, 8)})… Node progress shown in bar above`, 'active');
         saveTabState('tab1', { activePromptId: prompt_id, activeSeed: lastSeed });
 
         const fileData = await pollHistory(prompt_id, signal);
-        lastFilename = fileData.filename;
+        setLastFilename(fileData.filename);
 
         setStatus('✅ Image ready!', 'success');
         document.getElementById('loaderLabel').textContent = 'Fetching image…';
@@ -247,6 +257,7 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
         const subfolderQuery = fileData.subfolder ? `&subfolder=${encodeURIComponent(fileData.subfolder)}` : '';
         imgEl.src = `http://${COMFY_API_LIVE}/view?filename=${encodeURIComponent(fileData.filename)}${subfolderQuery}&type=output&t=${Date.now()}`;
         saveTabState('tab1', { activePromptId: null });
+        setActivePromptIds({ main: null });
 
     } catch (err) {
         if (err.name === 'AbortError') {
@@ -255,10 +266,10 @@ const _originalGenerateImage = async function (signal, isBatchRun = false) {
             console.error(err);
             setStatus(`❌ ${err.message}`, 'error');
         }
-        document.getElementById('loaderWrap').classList.remove('visible');
         document.getElementById('emptyState').style.display = '';
         showProgress(false);
         saveTabState('tab1', { activePromptId: null });
+        setActivePromptIds({ main: null });
     } finally {
         const cancelBtn = document.getElementById('cancelBtn');
         if (cancelBtn && !isBatchRun) cancelBtn.style.display = 'none';
@@ -411,8 +422,7 @@ export function setVideoRes(w, h, btn) {
 export function selectModel(chip) {
     document.querySelectorAll('.model-chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
-    selectedModel.name = chip.dataset.model;
-    selectedModel.type = chip.dataset.type;
+    setSelectedModel({ name: chip.dataset.model, type: chip.dataset.type });
 
     const type = chip.dataset.type;
     updateResolutionPresets(type);
@@ -472,6 +482,7 @@ function initApp() {
     applyTheme();
     renderPromptHistory();
     initAnimationPicker();
+    initVideoModelChips();
     updateResolutionPresets('gguf');
     initCanvasEventListeners();
     checkForRecovery();

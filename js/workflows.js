@@ -27,6 +27,36 @@ export async function loadWorkflowTemplate(name) {
     }
 }
 
+function injectLoras(flow, loraName, modelNodeId, clipNodeId) {
+    if (!loraName) return { modelNode: modelNodeId, clipNode: clipNodeId };
+
+    const loras = loraName.split(',').map(n => n.trim()).filter(Boolean);
+    if (loras.length === 0) return { modelNode: modelNodeId, clipNode: clipNodeId };
+
+    let currentModelNode = modelNodeId;
+    let currentClipNode = clipNodeId;
+    let loraIdPrefix = 20;
+
+    loras.forEach(lora => {
+        const loraId = loraIdPrefix.toString();
+        flow[loraId] = {
+            "class_type": "LoraLoader",
+            "inputs": {
+                "lora_name": lora,
+                "strength_model": 1.0,
+                "strength_clip": 1.0,
+                "model": [currentModelNode, 0],
+                "clip": [currentClipNode, currentClipNode === "2" ? 0 : 1]
+            }
+        };
+        currentModelNode = loraId;
+        currentClipNode = loraId;
+        loraIdPrefix++;
+    });
+
+    return { modelNode: currentModelNode, clipNode: currentClipNode };
+}
+
 export async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
     const type = opts.type || selectedModel.type;
     const model = opts.name || selectedModel.name;
@@ -54,36 +84,11 @@ export async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
         flow["6"].inputs.steps = steps;
         flow["6"].inputs.cfg = cfg;
 
-        // fix #23: inject LoRA loader for GGUF
-        // fix #23: inject dynamic multiple LoRA loaders for GGUF
-        if (loraName) {
-            const loras = loraName.split(',').map(n => n.trim()).filter(Boolean);
-            if (loras.length > 0) {
-                let currentModelNode = "1";
-                let currentClipNode = "2";
-                let loraIdPrefix = 20;
-
-                loras.forEach(lora => {
-                    const loraId = loraIdPrefix.toString();
-                    flow[loraId] = {
-                        "class_type": "LoraLoader",
-                        "inputs": {
-                            "lora_name": lora,
-                            "strength_model": 1.0,
-                            "strength_clip": 1.0,
-                            "model": [currentModelNode, 0],
-                            "clip": [currentClipNode, currentClipNode === "2" ? 0 : 1]
-                        }
-                    };
-                    currentModelNode = loraId;
-                    currentClipNode = loraId;
-                    loraIdPrefix++;
-                });
-
-                flow["6"].inputs.model = [currentModelNode, 0];
-                flow["4"].inputs.clip = [currentClipNode, 1];
-                flow["9"].inputs.clip = [currentClipNode, 1];
-            }
+        const { modelNode, clipNode } = injectLoras(flow, loraName, "1", "2");
+        if (modelNode !== "1") {
+            flow["6"].inputs.model = [modelNode, 0];
+            flow["4"].inputs.clip = [clipNode, 1];
+            flow["9"].inputs.clip = [clipNode, 1];
         }
         return flow;
     } else {
@@ -102,6 +107,13 @@ export async function buildWorkflow(positivePrompt, negativePrompt, opts = {}) {
         flow["6"].inputs.cfg = cfg;
         flow["6"].inputs.sampler_name = sampler;
         flow["6"].inputs.scheduler = scheduler;
+
+        const { modelNode, clipNode } = injectLoras(flow, loraName, "1", "1");
+        if (modelNode !== "1") {
+            flow["6"].inputs.model = [modelNode, 0];
+            flow["4"].inputs.clip = [clipNode, 1];
+            flow["9"].inputs.clip = [clipNode, 1];
+        }
 
         if (isSD15) {
             flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.sd15.vae } };
@@ -134,34 +146,11 @@ export async function buildImg2ImgWorkflow(refFilename, positivePrompt, negative
         flow["6"].inputs.cfg = cfg;
         flow["6"].inputs.denoise = denoise;
 
-        if (loraName) {
-            const loras = loraName.split(',').map(n => n.trim()).filter(Boolean);
-            if (loras.length > 0) {
-                let currentModelNode = "1";
-                let currentClipNode = "2";
-                let loraIdPrefix = 20;
-
-                loras.forEach(lora => {
-                    const loraId = loraIdPrefix.toString();
-                    flow[loraId] = {
-                        "class_type": "LoraLoader",
-                        "inputs": {
-                            "lora_name": lora,
-                            "strength_model": 1.0,
-                            "strength_clip": 1.0,
-                            "model": [currentModelNode, 0],
-                            "clip": [currentClipNode, currentClipNode === "2" ? 0 : 1]
-                        }
-                    };
-                    currentModelNode = loraId;
-                    currentClipNode = loraId;
-                    loraIdPrefix++;
-                });
-
-                flow["6"].inputs.model = [currentModelNode, 0];
-                flow["4"].inputs.clip = [currentClipNode, 1];
-                flow["9"].inputs.clip = [currentClipNode, 1];
-            }
+        const { modelNode, clipNode } = injectLoras(flow, loraName, "1", "2");
+        if (modelNode !== "1") {
+            flow["6"].inputs.model = [modelNode, 0];
+            flow["4"].inputs.clip = [clipNode, 1];
+            flow["9"].inputs.clip = [clipNode, 1];
         }
         return flow;
     } else {
@@ -180,6 +169,13 @@ export async function buildImg2ImgWorkflow(refFilename, positivePrompt, negative
         flow["6"].inputs.sampler_name = sampler;
         flow["6"].inputs.scheduler = scheduler;
         flow["6"].inputs.denoise = denoise;
+
+        const { modelNode, clipNode } = injectLoras(flow, loraName, "1", "1");
+        if (modelNode !== "1") {
+            flow["6"].inputs.model = [modelNode, 0];
+            flow["4"].inputs.clip = [clipNode, 1];
+            flow["9"].inputs.clip = [clipNode, 1];
+        }
 
         if (isSD15) {
             flow["3"] = { "class_type": "VAELoader", "inputs": { "vae_name": MODEL_FILES.sd15.vae } };

@@ -7,7 +7,8 @@ import {
     baseRefUploadName, setBaseRefUploadName,
     ANIMATION_PRESETS,
     canvasCtx, setCanvasCtx,
-    currentAnimationGrid, setCurrentAnimationGrid
+    currentAnimationGrid, setCurrentAnimationGrid,
+    setActivePromptIds
 } from './config.js';
 import { pollHistory, uploadImageToComfy } from './api.js';
 import { setSpriteStatus, showSpriteProgress, setProgress, setTabActivity } from './ui.js';
@@ -54,7 +55,7 @@ export async function generateSpriteRef() {
 
     setSpriteStatus('🚦 Initializing hardware…', 'active');
     showSpriteProgress(true);
-    setProgress(0);
+    setProgress(0, 'sprite');
 
     try {
         const spriteModel = getSpriteModel();
@@ -104,6 +105,7 @@ export async function generateSpriteRef() {
             throw new Error(`ComfyUI Error (${res.status}): ${errText}`);
         }
         const data = await res.json();
+        setActivePromptIds({ sprite: data.prompt_id });
 
         const fileData = await pollHistory(data.prompt_id);
 
@@ -126,8 +128,8 @@ export async function generateSpriteRef() {
     } finally {
         document.getElementById('spriteLoaderWrap').classList.remove('visible');
         showSpriteProgress(false);
-        btn.disabled = false;
         btn.textContent = '✦ Generate Reference Frame';
+        setActivePromptIds({ sprite: null });
     }
 }
 
@@ -152,8 +154,9 @@ export async function handleCustomUpload(event) {
         const prevSrc = document.getElementById('spriteRefImg').src;
         if (prevSrc.startsWith('blob:')) URL.revokeObjectURL(prevSrc);
 
-        document.getElementById('spriteEmpty').style.display = 'none';
-        document.getElementById('spriteLoaderWrap').classList.remove('active');
+        // Ensure to revoke eventually if we replace again
+        document.getElementById('spriteRefImg').src = imgUrl;
+        document.getElementById('spriteLoaderWrap').classList.remove('visible');
         document.getElementById('spriteRefImg').src = imgUrl;
         document.getElementById('spriteRefImg').style.display = 'block';
 
@@ -181,7 +184,7 @@ function resizeImageBlob(blob, maxSide) {
             const c = document.createElement('canvas');
             c.width = w; c.height = h;
             const ctx = c.getContext('2d');
-            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingEnabled = false; // Nearest-neighbor for pixel art
             ctx.drawImage(img, 0, 0, w, h);
             c.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
         };
@@ -190,8 +193,8 @@ function resizeImageBlob(blob, maxSide) {
     });
 }
 
-// Keep selectedSpriteModel locally scoped
-let selectedSpriteModel = { name: 'flux', type: 'gguf' };
+// Sync initial sprite model with the active chip in index.html (AnyLoRA/SD1.5)
+let selectedSpriteModel = { name: 'AnyLoRA_noVae_fp16-pruned.safetensors', type: 'sd15' };
 
 export function selectSpriteModel(el) {
     document.querySelectorAll('#spriteModelGrid .sprite-model-chip').forEach(b => b.classList.remove('active'));
@@ -397,7 +400,7 @@ export async function startAnimationQueue() {
     document.getElementById('canvasEmptyMsg').style.display = 'none';
     const newCtx = canvas.getContext('2d');
     setCanvasCtx(newCtx);
-    newCtx.imageSmoothingEnabled = false;
+    newCtx.imageSmoothingEnabled = false; // Essential for pixel-perfect grids
     newCtx.clearRect(0, 0, canvas.width, canvas.height);
 
     _tempUploads = [];
@@ -442,6 +445,7 @@ export async function startAnimationQueue() {
         lastFrameRefImg: baseRefUploadName,
         loraName: document.getElementById('loraInput')?.value.trim() || ''
     });
+    setActivePromptIds({ sprite: null, isSequential: true }); // Set flag before starting queue
 
     const rowStatuses = {};
     selectedAnims.forEach((animId, rowIndex) => {
@@ -482,7 +486,7 @@ export async function startAnimationQueue() {
 
             setSpriteStatus(`Animating ${animId} - Frame ${c + 1}/${framesCount}...`, 'active');
             showSpriteProgress(true);
-            setProgress(0);
+            setProgress(0, 'sprite');
 
             const animPrompt = getFramePrompt(c, framesCount);
 
@@ -512,6 +516,7 @@ export async function startAnimationQueue() {
                 });
                 if (!res.ok) throw new Error(`ComfyUI Error: ${res.statusText}`);
                 const data = await res.json();
+                setActivePromptIds({ sprite: data.prompt_id });
 
                 saveSession({ activeAnimId: animId, activeFrameIndex: c, activePromptId: data.prompt_id });
 
@@ -523,6 +528,7 @@ export async function startAnimationQueue() {
                     const img = new Image();
                     img.crossOrigin = "Anonymous";
                     img.onload = () => {
+                        canvasCtx.imageSmoothingEnabled = false; // Nearest-neighbor upscale
                         canvasCtx.drawImage(img, c * activeSpriteSize, r * activeSpriteSize, activeSpriteSize, activeSpriteSize);
                         resolve();
                     };
@@ -531,7 +537,15 @@ export async function startAnimationQueue() {
                 });
 
                 const newlyGeneratedBlobRes = await fetch(imgUrl);
-                const newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
+                let newlyGeneratedBlob = await newlyGeneratedBlobRes.blob();
+
+                // Category 3: SDXL Sizing Fix (Upscale for img2img recursion)
+                if (selectedModel.type === 'sdxl' || selectedModel.type === 'sdxl_lightning') {
+                    if (activeSpriteSize < 768) {
+                        newlyGeneratedBlob = await resizeImageBlob(newlyGeneratedBlob, 768);
+                    }
+                }
+
                 currentFrameRefImg = await uploadImageToComfy(newlyGeneratedBlob, `recur_${animId}_${c}_${Date.now()}.png`);
                 _tempUploads.push(currentFrameRefImg);
 
@@ -546,7 +560,8 @@ export async function startAnimationQueue() {
                         lastFrameRefImg: currentFrameRefImg
                     });
                 }
-
+                setActivePromptIds({ sprite: null, isSequential: false });
+                saveSession({ activePromptId: null });
                 timelineStr = '✅'.repeat(c + 1) + '⬜'.repeat(framesCount - c - 1);
                 status.div.innerText = timelineStr;
 

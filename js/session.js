@@ -131,9 +131,19 @@ export function checkForRecovery() {
         ? ` \u2014 Frame ${(s.activeFrameIndex ?? 0) + 1} of ${s.activeAnimId} still rendering...`
         : '';
 
-    document.getElementById('recoveryMsg').innerHTML =
-        `<strong>${lines.join(', ')}</strong>${activePart}<br>` +
-        `<span style="opacity:0.6;">Session from ${new Date(s.timestamp).toLocaleTimeString()}</span>`;
+    const msgEl = document.getElementById('recoveryMsg');
+    if (msgEl) {
+        msgEl.innerHTML = ''; // Clear first
+        const strong = document.createElement('strong');
+        strong.textContent = lines.join(', ');
+        msgEl.appendChild(strong);
+        msgEl.appendChild(document.createTextNode(activePart));
+        msgEl.appendChild(document.createElement('br'));
+        const span = document.createElement('span');
+        span.style.opacity = '0.6';
+        span.textContent = `Session from ${new Date(s.timestamp).toLocaleTimeString()}`;
+        msgEl.appendChild(span);
+    }
     document.getElementById('recoveryBanner').style.display = 'block';
 }
 

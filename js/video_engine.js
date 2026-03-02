@@ -1,8 +1,8 @@
 import {
     TRAFFIC_COP_LIVE, COMFY_API_LIVE, CLIENT_ID,
-    selectedVideoModel, videoFrameCount, videoFps, videoImgWidth, videoImgHeight,
-    ANIMATEDIFF_DEFAULTS,
-    setSelectedVideoModel
+    ANIMATEDIFF_DEFAULTS, ANIMATEDIFF_COMPAT_MODELS,
+    setSelectedVideoModel, setActivePromptIds,
+    videoImgWidth, videoImgHeight
 } from './config.js';
 import { pollHistory } from './api.js';
 import { buildAnimateDiffWorkflow } from './workflows.js';
@@ -39,6 +39,20 @@ export function selectVideoModel(chip) {
         name: chip.dataset.model,
         type: 'sd15',
         label: chip.textContent.trim()
+    });
+}
+
+export function initVideoModelChips() {
+    const group = document.getElementById('videoModelGroup');
+    if (!group) return;
+    group.innerHTML = '';
+    ANIMATEDIFF_COMPAT_MODELS.forEach((m, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `video-model-chip sprite-model-chip ${idx === 0 ? 'active' : ''}`;
+        btn.dataset.model = m.name;
+        btn.textContent = m.label;
+        btn.onclick = () => selectVideoModel(btn);
+        group.appendChild(btn);
     });
 }
 
@@ -90,7 +104,7 @@ export async function startVideoGen() {
         // 2. Build workflow
         setVideoStatus('⚙️ Building AnimateDiff workflow…', 'active');
         const workflowData = await buildAnimateDiffWorkflow(prompt, negPrompt, {
-            modelName: selectedVideoModel.name,
+            modelName: document.querySelector('.video-model-chip.active')?.dataset.model || ANIMATEDIFF_COMPAT_MODELS[0].name,
             frameCount, fps, width, height,
             steps: ANIMATEDIFF_DEFAULTS.steps,
             cfg: ANIMATEDIFF_DEFAULTS.cfg
@@ -106,9 +120,10 @@ export async function startVideoGen() {
         });
         if (!res.ok) throw new Error(`ComfyUI error (${res.status}): ${await res.text()}`);
         const data = await res.json();
+        setActivePromptIds({ video: data.prompt_id });
         saveTabState('tab3', { activePromptId: data.prompt_id });
 
-        // 4. Poll for result (VHS outputs a gif, so filename ends in .gif)
+        // 4. Poll for result
         setVideoStatus('⏳ Generating frames… this may take a minute…', 'active');
         const fileData = await pollHistory(data.prompt_id, signal);
 
@@ -133,6 +148,7 @@ export async function startVideoGen() {
 
         setVideoStatus('✨ Animation complete!', 'success');
         saveTabState('tab3', { activePromptId: null });
+        setActivePromptIds({ video: null });
 
     } catch (err) {
         if (err.name === 'AbortError' || _videoCancelFlag) {
@@ -142,6 +158,7 @@ export async function startVideoGen() {
             console.error('[video_engine] startVideoGen error:', err);
         }
         saveTabState('tab3', { activePromptId: null });
+        setActivePromptIds({ video: null });
     } finally {
         showVideoProgress(false);
         btn.disabled = false;
@@ -169,6 +186,7 @@ export async function resumeVideoGen(prompt_id) {
 
     try {
         import('./api.js').then(({ initWebSocket }) => initWebSocket());
+        setActivePromptIds({ video: prompt_id });
 
         setVideoStatus('⏳ Generating frames… this may take a minute…', 'active');
         const fileData = await pollHistory(prompt_id, signal);
@@ -179,7 +197,7 @@ export async function resumeVideoGen(prompt_id) {
         resultImg.src = gifUrl;
         resultImg.style.display = 'block';
 
-        const dlBtn = document.getElementById('btnDownloadVideo'); // Need definition?
+        const dlBtn = document.getElementById('btnDownloadVideo');
         if (dlBtn) {
             dlBtn.style.display = 'inline-flex';
             dlBtn.onclick = () => {
@@ -192,6 +210,7 @@ export async function resumeVideoGen(prompt_id) {
 
         setVideoStatus('✨ Animation complete!', 'success');
         saveTabState('tab3', { activePromptId: null });
+        setActivePromptIds({ video: null });
 
     } catch (err) {
         if (err.name === 'AbortError' || _videoCancelFlag) {
@@ -201,6 +220,7 @@ export async function resumeVideoGen(prompt_id) {
             console.error('[video_engine] resumeVideoGen error:', err);
         }
         saveTabState('tab3', { activePromptId: null });
+        setActivePromptIds({ video: null });
     } finally {
         showVideoProgress(false);
         btn.disabled = false;
